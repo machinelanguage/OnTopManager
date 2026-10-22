@@ -18,6 +18,13 @@ Nasil calisir:
     guncellenir.
   - Listeden bir pencere secip "Ontop Yap / Kaldir" butonuna basarak (veya
     satira cift tiklayarak) o pencereyi her zaman ustte goster / kaldir.
+  - COKLU SECIM: Ctrl'ye basili tutarak (veya Ctrl+A ile) birden fazla pencere
+    secilebilir; "Secilenleri Ontop Yap / Kaldir" butonu secilenlerin tamamina
+    uygulanir (secilenlerin tamami ontop ise kapatir, degilse hepsini acar).
+  - GRUPLAMA: "Uygulamalari Grupla" seciliyken ayni uygulamaya (chrome.exe,
+    opera.exe vb.) ait birden fazla pencere tek bir grup satiri altinda toplanir
+    ("N kopya / M ontop" bilgisiyle). Grup satirina tiklayarak alt pencereleri
+    acip kapatabilirsiniz (dropdown gibi).
   - Ontop yapilan uygulamalar, calistirilabilir dosya adina (orn. notepad.exe)
     gore %APPDATA%\OnTopManager\settings.ini dosyasina kaydedilir.
   - Program kapatilip tekrar acildiginda, veya ayni isimli uygulama sonradan

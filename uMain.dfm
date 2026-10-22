@@ -25,8 +25,8 @@ object frmMain: TfrmMain
     Align = alTop
     Alignment = taCenter
     Caption = 
-      'Listeden bir uygulama secip "Ontop Yap / Kaldir" butonuna veya' +
-      ' cift tiklamaya basin.'
+      'Birden fazla pencereyi (Ctrl/Ctrl+A) secip "Secilenleri Ontop Yap / Kaldir"' +
+      ' butonuna basin. Grup satirina tiklayinca alt pencereler acilir/kapanir.'
     ExplicitWidth = 540
   end
   object ListViewApps: TListView
@@ -41,8 +41,10 @@ object frmMain: TfrmMain
     RowSelect = True
     TabOrder = 0
     ViewStyle = vsReport
+    OnClick = ListViewAppsClick
     OnColumnClick = ListViewAppsColumnClick
     OnDblClick = ListViewAppsDblClick
+    OnKeyDown = ListViewAppsKeyDown
   end
   object PanelTop: TPanel
     Left = 0
@@ -64,11 +66,22 @@ object frmMain: TfrmMain
     object btnToggleOnTop: TButton
       Left = 156
       Top = 8
-      Width = 180
+      Width = 200
       Height = 32
-      Caption = 'Ontop Yap / Kaldir'
+      Caption = 'Secilenleri Ontop Yap / Kaldir'
       TabOrder = 1
       OnClick = btnToggleOnTopClick
+    end
+    object chkGroup: TCheckBox
+      Left = 372
+      Top = 13
+      Width = 180
+      Height = 20
+      Caption = 'Uygulamalari Grupla'
+      Checked = True
+      State = cbChecked
+      TabOrder = 2
+      OnClick = chkGroupClick
     end
   end
   object StatusBar1: TStatusBar
