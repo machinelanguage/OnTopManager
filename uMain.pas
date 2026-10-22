@@ -37,10 +37,18 @@ type
     btnRefresh: TButton;
     btnToggleOnTop: TButton;
     chkGroup: TCheckBox;
+    PanelHK: TPanel;
+    lblHK1: TLabel;
+    hkSend: THotKey;
+    lblHK2: TLabel;
+    hkRestore: THotKey;
+    btnApplyHK: TButton;
+    chkOwnIcon: TCheckBox;
     ListViewApps: TListView;
     TimerRefresh: TTimer;
     StatusBar1: TStatusBar;
     TrayIcon1: TTrayIcon;
+    TrayIcon2: TTrayIcon;
     PopupMenuTray: TPopupMenu;
     miShow: TMenuItem;
     miExit: TMenuItem;
@@ -59,16 +67,24 @@ type
     procedure chkGroupClick(Sender: TObject);
     procedure ListViewAppsClick(Sender: TObject);
     procedure ListViewAppsKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure btnApplyHKClick(Sender: TObject);
+    procedure chkOwnIconClick(Sender: TObject);
+    procedure TrayIcon2Click(Sender: TObject);
+    procedure PopupMenuTrayPopup(Sender: TObject);
+    procedure miHiddenClick(Sender: TObject);
   private
     FWindows: TList<TWindowInfo>;
     FRemembered: TStringList;     // hatirlanan exe adlari (kucuk harf)
     FCollapsedExes: TStringList;  // kapatilmis (collapsed) gruplarin exe adlari
+    FHidden: TList<HWND>;         // kisayolla tray'a atilan pencereler (0 = en yeni)
+    FMenuItems: TList<TMenuItem>; // gizli pencereler icin dinamik menu ogeleri
     FIniPath: string;
     FClosing: Boolean;
     FSortColumn: Integer;
     FSortAscending: Boolean;
     procedure WMSysCommand(var Msg: TWMSysCommand); message WM_SYSCOMMAND;
     procedure WMActivateInstance(var Msg: TMessage); message WM_USER + 1;
+    procedure WMHotKey(var Msg: TMessage); message WM_HOTKEY;
     procedure EnumRunningWindows;
     procedure LoadSettings;
     procedure SaveSettings;
@@ -83,6 +99,12 @@ type
     procedure AddWindowItem(AIndex: Integer; ASelHandles: TList<HWND>);
     procedure ToggleGroupCollapse(const AExe: string);
     procedure BringWindowToFront(AHandle: HWND);
+    procedure SendActiveToTray;
+    procedure RestoreLastHidden;
+    procedure RestoreHiddenIndex(AIndex: Integer);
+    procedure ApplyHotkeySettings;
+    procedure UpdateTrayState;
+    procedure RebuildHiddenMenu;
   public
   end;
 
@@ -107,11 +129,35 @@ begin
   FillChar(Buf, SizeOf(Buf), 0);
   GetClassName(Wnd, Buf, Length(Buf));
   ClassName := Buf;
-  if (ClassName = 'TfrmMain') and IsWindowVisible(Wnd) then
+  if (ClassName = 'TfrmMain') then
   begin
     PostMessage(Wnd, WM_USER + 1, 0, 0);
     Result := False; // bulduk, dur
   end;
+end;
+
+// Gizli pencere basligini okur (tray menusunde gosterilir)
+function GetWindowTitleText(H: HWND): string;
+var
+  Buf: array[0..255] of Char;
+begin
+  FillChar(Buf, SizeOf(Buf), 0);
+  GetWindowText(H, Buf, Length(Buf));
+  Result := Buf;
+  if Result = '' then
+    Result := '(basliksiz pencere)';
+end;
+
+// THotKey degerindeki modifier bitlerini RegisterHotKey MOD_* bayraklarina cevirir
+function HotKeyMods(AHotKey: Integer): UINT;
+var
+  M: Byte;
+begin
+  M := (AHotKey shr 8) and $FF;
+  Result := 0;
+  if (M and HOTKEYF_SHIFT) <> 0 then Result := Result or MOD_SHIFT;
+  if (M and HOTKEYF_CONTROL) <> 0 then Result := Result or MOD_CONTROL;
+  if (M and HOTKEYF_ALT) <> 0 then Result := Result or MOD_ALT;
 end;
 
 { ---------------------------------------------------------------------------
@@ -273,6 +319,8 @@ begin
   FCollapsedExes := TStringList.Create;
   FCollapsedExes.Sorted := True;
   FCollapsedExes.Duplicates := dupIgnore;
+  FHidden := TList<HWND>.Create;
+  FMenuItems := TList<TMenuItem>.Create;
   FClosing := False;
 
   AppDataDir := IncludeTrailingPathDelimiter(GetEnvironmentVariable('APPDATA')) + 'OnTopManager';
@@ -298,24 +346,32 @@ begin
   if TrayIcon1.Icon.Empty then
     TrayIcon1.Icon.Handle := LoadIcon(0, IDI_APPLICATION);
   TrayIcon1.Hint := 'OnTop Manager';
+  // Ikinci tray ikonu da programin kendi ikonunu kullanir (mod 2)
+  TrayIcon2.Icon.Assign(TrayIcon1.Icon);
+
+  LoadSettings;
+  ApplyHotkeySettings;
+  UpdateTrayState;
+  RefreshListView;
 
   // Surum bilgisini form basliginda goster (dproj'taki version kaynagindan okunur)
   if GetAppVersion <> '' then
     Caption := Format('OnTop Manager v%s', [GetAppVersion])
   else
-    Caption := 'OnTop Manager v1.1';
-
-  LoadSettings;
-  RefreshListView;
+    Caption := 'OnTop Manager v1.4';
 
   TimerRefresh.Enabled := False; // liste otomatik yenilenmesin, sadece manuel/F5
 end;
 
 procedure TfrmMain.FormDestroy(Sender: TObject);
 begin
+  UnregisterHotKey(Handle, 1);
+  UnregisterHotKey(Handle, 2);
   FWindows.Free;
   FRemembered.Free;
   FCollapsedExes.Free;
+  FHidden.Free;
+  FMenuItems.Free;
 end;
 
 procedure TfrmMain.FormClose(Sender: TObject; var Action: TCloseAction);
@@ -386,8 +442,6 @@ var
   I: Integer;
 begin
   FRemembered.Clear;
-  if not FileExists(FIniPath) then
-    Exit;
   Ini := TIniFile.Create(FIniPath);
   Keys := TStringList.Create;
   try
@@ -395,6 +449,11 @@ begin
     for I := 0 to Keys.Count - 1 do
       if Ini.ReadBool('OnTop', Keys[I], False) then
         FRemembered.Add(LowerCase(Keys[I]));
+
+    // Kisayollar ve tray gosterim modu (varsayilan: Ctrl+Alt+H / Ctrl+Alt+J)
+    hkSend.HotKey := Ini.ReadInteger('Hotkeys', 'SendHotKey', 1608);
+    hkRestore.HotKey := Ini.ReadInteger('Hotkeys', 'RestoreHotKey', 1610);
+    chkOwnIcon.Checked := Ini.ReadBool('Options', 'OwnTrayIcon', False);
   finally
     Keys.Free;
     Ini.Free;
@@ -411,6 +470,10 @@ begin
     Ini.EraseSection('OnTop');
     for I := 0 to FRemembered.Count - 1 do
       Ini.WriteBool('OnTop', FRemembered[I], True);
+
+    Ini.WriteInteger('Hotkeys', 'SendHotKey', hkSend.HotKey);
+    Ini.WriteInteger('Hotkeys', 'RestoreHotKey', hkRestore.HotKey);
+    Ini.WriteBool('Options', 'OwnTrayIcon', chkOwnIcon.Checked);
   finally
     Ini.Free;
   end;
@@ -804,6 +867,159 @@ end;
 procedure TfrmMain.chkGroupClick(Sender: TObject);
 begin
   RefreshListView;
+end;
+
+{ ---------------------------------------------------------------------------
+  Kisayol ile tray'a atma / geri getirme
+  --------------------------------------------------------------------------- }
+
+procedure TfrmMain.WMHotKey(var Msg: TMessage);
+begin
+  case Msg.WParam of
+    1: SendActiveToTray;    // "Tray'a At" kisayolu
+    2: RestoreLastHidden;   // "Geri Getir" kisayolu
+  end;
+end;
+
+procedure TfrmMain.SendActiveToTray;
+var
+  H: HWND;
+  I: Integer;
+begin
+  H := GetForegroundWindow;
+  // Kendi penceremizi ve bos durumu atla
+  if (H = 0) or (H = Handle) or (H = Application.Handle) then
+    Exit;
+  // Zaten gizli listede varsa yeniden ekleme
+  for I := 0 to FHidden.Count - 1 do
+    if FHidden[I] = H then
+      Exit;
+
+  FHidden.Insert(0, H); // en yeni, listenin basina
+  ShowWindow(H, SW_HIDE); // gorev cubugundan kalkar, tray'da bekler
+  UpdateTrayState;
+  RefreshListView;
+end;
+
+procedure TfrmMain.RestoreLastHidden;
+begin
+  RestoreHiddenIndex(0);
+end;
+
+procedure TfrmMain.RestoreHiddenIndex(AIndex: Integer);
+var
+  H: HWND;
+begin
+  if (AIndex < 0) or (AIndex >= FHidden.Count) then
+    Exit;
+  H := FHidden[AIndex];
+  FHidden.Delete(AIndex);
+  if IsWindow(H) then
+  begin
+    ShowWindow(H, SW_SHOW);
+    if IsIconic(H) then
+      ShowWindow(H, SW_RESTORE);
+    SetForegroundWindow(H);
+  end;
+  UpdateTrayState;
+  RefreshListView;
+end;
+
+procedure TfrmMain.ApplyHotkeySettings;
+var
+  Ok1, Ok2: Boolean;
+begin
+  UnregisterHotKey(Handle, 1);
+  UnregisterHotKey(Handle, 2);
+  Ok1 := RegisterHotKey(Handle, 1, HotKeyMods(hkSend.HotKey), hkSend.HotKey and $FF);
+  Ok2 := RegisterHotKey(Handle, 2, HotKeyMods(hkRestore.HotKey), hkRestore.HotKey and $FF);
+  if (not Ok1) or (not Ok2) then
+    StatusBar1.SimpleText := 'Uyari: bazi kisayollar kaydedilemedi (baska uygulama kullanıyor olabilir).';
+end;
+
+procedure TfrmMain.UpdateTrayState;
+var
+  I: Integer;
+  S: string;
+begin
+  // Bu arada kapanmis gizli pencereleri listeden temizle
+  for I := FHidden.Count - 1 downto 0 do
+    if not IsWindow(FHidden[I]) then
+      FHidden.Delete(I);
+
+  // Mod 2: gizli pencere varken programin kendi ikonuyla ikinci tray ikonu gorunur
+  TrayIcon2.Visible := chkOwnIcon.Checked and (FHidden.Count > 0);
+  if TrayIcon2.Visible then
+    TrayIcon2.Hint := Format('Gizli pencereler: %d (tikla: ac)', [FHidden.Count]);
+
+  S := 'OnTop Manager';
+  if FHidden.Count > 0 then
+    S := Format('%s  (%d gizli pencere)', [S, FHidden.Count]);
+  TrayIcon1.Hint := S;
+end;
+
+procedure TfrmMain.RebuildHiddenMenu;
+var
+  I: Integer;
+  mi: TMenuItem;
+begin
+  // Onceki dinamik ogeleri kaldir
+  for I := 0 to FMenuItems.Count - 1 do
+    FMenuItems[I].Free;
+  FMenuItems.Clear;
+  if FHidden.Count = 0 then
+    Exit;
+
+  // Ayirici
+  mi := TMenuItem.Create(PopupMenuTray);
+  mi.Caption := '-';
+  PopupMenuTray.Items.Insert(PopupMenuTray.Items.IndexOf(miExit), mi);
+  FMenuItems.Add(mi);
+
+  // Gizli pencereleri, ana tray ikonu altinda kumelenmis olarak listele
+  for I := 0 to FHidden.Count - 1 do
+  begin
+    mi := TMenuItem.Create(PopupMenuTray);
+    mi.Caption := GetWindowTitleText(FHidden[I]);
+    mi.Tag := FHidden[I];
+    mi.OnClick := miHiddenClick;
+    PopupMenuTray.Items.Insert(PopupMenuTray.Items.IndexOf(miExit), mi);
+    FMenuItems.Add(mi);
+  end;
+end;
+
+procedure TfrmMain.PopupMenuTrayPopup(Sender: TObject);
+begin
+  RebuildHiddenMenu;
+end;
+
+procedure TfrmMain.miHiddenClick(Sender: TObject);
+var
+  Idx: Integer;
+begin
+  Idx := FHidden.IndexOf(HWND((Sender as TMenuItem).Tag));
+  if Idx >= 0 then
+    RestoreHiddenIndex(Idx);
+end;
+
+procedure TfrmMain.TrayIcon2Click(Sender: TObject);
+begin
+  // Her durumda tiklandiginda en son gizlenen pencereyi ac
+  RestoreLastHidden;
+end;
+
+procedure TfrmMain.chkOwnIconClick(Sender: TObject);
+begin
+  UpdateTrayState;
+  SaveSettings;
+end;
+
+procedure TfrmMain.btnApplyHKClick(Sender: TObject);
+begin
+  ApplyHotkeySettings;
+  SaveSettings;
+  UpdateStatusBar;
+  StatusBar1.SimpleText := StatusBar1.SimpleText + '  |  Kisayollar uygulandi';
 end;
 
 procedure TfrmMain.TimerRefreshTimer(Sender: TObject);
