@@ -131,6 +131,35 @@ begin
   end;
 end;
 
+// Calisan exe'nin (dproj > Proje Secenekleri > Surum Bilgisi) version kaynagini okur
+function GetAppVersion: string;
+var
+  ExePath: string;
+  Size: DWORD;
+  Hnd: DWORD;
+  Buffer: Pointer;
+  FixedInfo: PVSFixedFileInfo;
+  Len: UINT;
+begin
+  Result := '';
+  ExePath := ParamStr(0);
+  Size := GetFileVersionInfoSize(PChar(ExePath), Hnd);
+  if Size = 0 then
+    Exit;
+  Buffer := AllocMem(Size);
+  try
+    if GetFileVersionInfo(PChar(ExePath), 0, Size, Buffer) and
+       VerQueryValue(Buffer, '\', Pointer(FixedInfo), Len) then
+    begin
+      Result := Format('%d.%d.%d',
+        [HiWord(FixedInfo.dwFileVersionMS), LoWord(FixedInfo.dwFileVersionMS),
+         HiWord(FixedInfo.dwFileVersionLS)]);
+    end;
+  finally
+    FreeMem(Buffer);
+  end;
+end;
+
 function GetProcessStartTime(APID: DWORD): TDateTime;
 var
   hProc: THandle;
@@ -246,6 +275,12 @@ begin
   if TrayIcon1.Icon.Empty then
     TrayIcon1.Icon.Handle := LoadIcon(0, IDI_APPLICATION);
   TrayIcon1.Hint := 'OnTop Manager';
+
+  // Surum bilgisini form basliginda goster (dproj'taki version kaynagindan okunur)
+  if GetAppVersion <> '' then
+    Caption := Format('OnTop Manager v%s', [GetAppVersion])
+  else
+    Caption := 'OnTop Manager v1.1';
 
   LoadSettings;
   RefreshListView;
