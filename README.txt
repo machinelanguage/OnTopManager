@@ -39,6 +39,15 @@ Nasil calisir:
     siralama yapabilirsiniz; aktif siralama sutununda ^ / v isareti gorunur.
   - Sistem tepsisindeki simge uygulamanin kendi (Application) ikonudur.
 
+Surum Notlari
+=============
+Surum numarasi Delphi proje seceneklerinde (OnTopManager.dproj > VerInfo_Keys,
+FileVersion/ProductVersion) tutulur ve form basliginda "vX.Y.Z" olarak gosterilir.
+Her yeni ozellik talebinde minor deger bir arttirilir.
+
+  v1.1.0 - Coklu secim ile toplu ontop; uygulama bazli gruplama/dropdown; tiklanan pencereyi one getirme
+  v1.0.0 - Ilk surum: pencere listesi, ontop yap/kaldir, hatirlama (INI), tray, sutun siralama
+
 Notlar:
   - Bu ortamda Delphi kurulu olmadigi icin kod burada derlenip test edilememistir;
     Delphi 10.4 ile acip derlemeniz ve calistirmaniz gerekir.
