@@ -26,7 +26,7 @@ object frmMain: TfrmMain
     Alignment = taCenter
     Caption = 
       'Birden fazla pencereyi (Ctrl/Ctrl+A) secip "Secilenleri Ontop Yap / Kaldir"' +
-      ' butonuna basin. Grup satirina tiklayinca alt pencereler acilir/kapanir.'
+      ' butonuna basin. Pencereyi one getirmek icin satira cift tiklayin.'
     ExplicitWidth = 540
   end
   object ListViewApps: TListView

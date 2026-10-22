@@ -82,6 +82,7 @@ type
     function WindowIndexByHandle(AHandle: HWND): Integer;
     procedure AddWindowItem(AIndex: Integer; ASelHandles: TList<HWND>);
     procedure ToggleGroupCollapse(const AExe: string);
+    procedure BringWindowToFront(AHandle: HWND);
   public
   end;
 
@@ -741,46 +742,49 @@ begin
 end;
 
 procedure TfrmMain.ListViewAppsDblClick(Sender: TObject);
+var
+  Item: TListItem;
 begin
   // Grup satirina cift tiklama: grubu ac/kapat
-  if chkGroup.Checked and Assigned(ListViewApps.Selected) and
-     (HWND(ListViewApps.Selected.Data) = HWND(-1)) then
+  Item := ListViewApps.Selected;
+  if Assigned(Item) and (HWND(Item.Data) = HWND(-1)) then
   begin
-    ToggleGroupCollapse(LowerCase(ListViewApps.Selected.SubItems[0]));
+    if chkGroup.Checked then
+      ToggleGroupCollapse(LowerCase(Item.SubItems[0]));
     Exit;
   end;
-  btnToggleOnTopClick(Sender);
+  // Pencere satirina cift tiklama: ilgili pencereyi one getir
+  if Assigned(Item) then
+    BringWindowToFront(HWND(Item.Data));
 end;
 
 procedure TfrmMain.ListViewAppsClick(Sender: TObject);
 var
   Pt: TPoint;
   Item: TListItem;
-  H: HWND;
-  Idx: Integer;
 begin
   Pt := ListViewApps.ScreenToClient(Mouse.CursorPos);
   Item := ListViewApps.GetItemAt(Pt.X, Pt.Y);
   if Item = nil then
     Exit;
 
-  // Pencere satirina tek tiklama: ilgili pencereyi one getir (bring to front)
+  // Pencere satirina tek tiklama: sadece secim (one getirmek icin cift tiklama gerekir)
   if HWND(Item.Data) <> HWND(-1) then
-  begin
-    H := HWND(Item.Data);
-    Idx := WindowIndexByHandle(H);
-    if (Idx >= 0) and IsWindow(H) then
-    begin
-      if IsIconic(H) then
-        ShowWindow(H, SW_RESTORE);
-      SetForegroundWindow(H);
-    end;
     Exit;
-  end;
 
   // Grup satirina tek tiklama: grubu ac/kapat (dropdown)
   if chkGroup.Checked then
     ToggleGroupCollapse(LowerCase(Item.SubItems[0]));
+end;
+
+procedure TfrmMain.BringWindowToFront(AHandle: HWND);
+begin
+  if (AHandle <> HWND(-1)) and IsWindow(AHandle) then
+  begin
+    if IsIconic(AHandle) then
+      ShowWindow(AHandle, SW_RESTORE);
+    SetForegroundWindow(AHandle);
+  end;
 end;
 
 procedure TfrmMain.ListViewAppsKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
