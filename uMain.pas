@@ -36,6 +36,7 @@ type
     PanelTop: TPanel;
     btnRefresh: TButton;
     btnToggleOnTop: TButton;
+    chkGroup: TCheckBox;
     ListViewApps: TListView;
     TimerRefresh: TTimer;
     StatusBar1: TStatusBar;
@@ -55,9 +56,13 @@ type
     procedure miExitClick(Sender: TObject);
     procedure TrayIcon1DblClick(Sender: TObject);
     procedure ListViewAppsColumnClick(Sender: TObject; Column: TListColumn);
+    procedure chkGroupClick(Sender: TObject);
+    procedure ListViewAppsClick(Sender: TObject);
+    procedure ListViewAppsKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
   private
     FWindows: TList<TWindowInfo>;
     FRemembered: TStringList;     // hatirlanan exe adlari (kucuk harf)
+    FCollapsedExes: TStringList;  // kapatilmis (collapsed) gruplarin exe adlari
     FIniPath: string;
     FClosing: Boolean;
     FSortColumn: Integer;
@@ -70,8 +75,12 @@ type
     procedure RefreshListView;
     procedure AutoApplyRemembered;
     procedure UpdateStatusBar;
-    procedure SortWindowList;
+    procedure SortWindowList(AGrouped: Boolean);
+    function CompareWindowInfos(const A, B: TWindowInfo): Integer;
     procedure UpdateColumnHeaders;
+    function WindowIndexByHandle(AHandle: HWND): Integer;
+    procedure AddWindowItem(AIndex: Integer; ASelHandles: TList<HWND>);
+    procedure ToggleGroupCollapse(const AExe: string);
   public
   end;
 
@@ -209,6 +218,9 @@ begin
   FRemembered := TStringList.Create;
   FRemembered.Duplicates := dupIgnore;
   FRemembered.Sorted := True;
+  FCollapsedExes := TStringList.Create;
+  FCollapsedExes.Sorted := True;
+  FCollapsedExes.Duplicates := dupIgnore;
   FClosing := False;
 
   AppDataDir := IncludeTrailingPathDelimiter(GetEnvironmentVariable('APPDATA')) + 'OnTopManager';
@@ -218,6 +230,7 @@ begin
   ListViewApps.ViewStyle := vsReport;
   ListViewApps.RowSelect := True;
   ListViewApps.ReadOnly := True;
+  ListViewApps.MultiSelect := True; // birden fazla pencere secilebilsin
   ListViewApps.Columns.Clear;
   with ListViewApps.Columns.Add do begin Caption := 'Ontop'; Width := 60; end;
   with ListViewApps.Columns.Add do begin Caption := 'Uygulama (EXE)'; Width := 160; end;
@@ -244,6 +257,7 @@ procedure TfrmMain.FormDestroy(Sender: TObject);
 begin
   FWindows.Free;
   FRemembered.Free;
+  FCollapsedExes.Free;
 end;
 
 procedure TfrmMain.FormClose(Sender: TObject; var Action: TCloseAction);
@@ -380,73 +394,159 @@ end;
 
 procedure TfrmMain.RefreshListView;
 var
-  I: Integer;
-  Info: TWindowInfo;
+  I, J: Integer;
   Item: TListItem;
-  SelHandle: HWND;
+  SelHandles: TList<HWND>;
+  CurExe: string;
+  GroupStart, GroupCount, GroupTopMost: Integer;
+  GroupingOn: Boolean;
 begin
-  SelHandle := 0;
-  if Assigned(ListViewApps.Selected) then
-    SelHandle := HWND(ListViewApps.Selected.Data);
-
-  EnumRunningWindows;
-  AutoApplyRemembered;
-  SortWindowList;
-
-  ListViewApps.Items.BeginUpdate;
+  // Mevcut secili pencereleri (grup satirlari haric) hatirlayalim
+  SelHandles := TList<HWND>.Create;
   try
-    ListViewApps.Items.Clear;
-    for I := 0 to FWindows.Count - 1 do
-    begin
-      Info := FWindows[I];
-      Item := ListViewApps.Items.Add;
-      if Info.IsTopMost then
-        Item.Caption := 'Evet'
-      else
-        Item.Caption := 'Hayir';
-      Item.SubItems.Add(Info.ExeName);
-      Item.SubItems.Add(Info.Title);
-      Item.SubItems.Add(IntToStr(Info.PID));
-      if Info.StartTime > 0 then
-        Item.SubItems.Add(DateTimeToStr(Info.StartTime))
-      else
-        Item.SubItems.Add('-');
-      Item.Data := Pointer(Info.Handle);
-      if Info.Handle = SelHandle then
-        Item.Selected := True;
+    for I := 0 to ListViewApps.Items.Count - 1 do
+      if ListViewApps.Items[I].Selected and (HWND(ListViewApps.Items[I].Data) <> HWND(-1)) then
+        SelHandles.Add(HWND(ListViewApps.Items[I].Data));
+
+    EnumRunningWindows;
+    AutoApplyRemembered;
+    GroupingOn := chkGroup.Checked;
+    SortWindowList(GroupingOn);
+
+    ListViewApps.Items.BeginUpdate;
+    try
+      ListViewApps.Items.Clear;
+      I := 0;
+      while I < FWindows.Count do
+      begin
+        if GroupingOn then
+        begin
+          // Ayni exe'ye ait ard isik pencereleri tek grup satiri altinda topla
+          CurExe := LowerCase(FWindows[I].ExeName);
+          GroupStart := I;
+          GroupCount := 0;
+          GroupTopMost := 0;
+          while (I < FWindows.Count) and (LowerCase(FWindows[I].ExeName) = CurExe) do
+          begin
+            Inc(GroupCount);
+            if FWindows[I].IsTopMost then
+              Inc(GroupTopMost);
+            Inc(I);
+          end;
+
+          // Grup (task) satiri: tiklaninca alt ogullar acilir/kapanir
+          Item := ListViewApps.Items.Add;
+          if FCollapsedExes.IndexOf(CurExe) >= 0 then
+            Item.Caption := '[+]'
+          else
+            Item.Caption := '[-]';
+          Item.SubItems.Add(FWindows[GroupStart].ExeName);
+          Item.SubItems.Add(Format('%d kopya / %d ontop', [GroupCount, GroupTopMost]));
+          Item.SubItems.Add('');
+          Item.SubItems.Add('');
+          Item.Data := Pointer(HWND(-1)); // grup satiri isareti
+
+          if FCollapsedExes.IndexOf(CurExe) < 0 then
+            for J := GroupStart to I - 1 do
+              AddWindowItem(J, SelHandles);
+        end
+        else
+        begin
+          AddWindowItem(I, SelHandles);
+          Inc(I);
+        end;
+      end;
+    finally
+      ListViewApps.Items.EndUpdate;
     end;
   finally
-    ListViewApps.Items.EndUpdate;
+    SelHandles.Free;
   end;
 
   UpdateColumnHeaders;
   UpdateStatusBar;
 end;
 
-procedure TfrmMain.SortWindowList;
+procedure TfrmMain.AddWindowItem(AIndex: Integer; ASelHandles: TList<HWND>);
 var
-  Col: Integer;
-  Asc: Boolean;
+  Info: TWindowInfo;
+  Item: TListItem;
+begin
+  Info := FWindows[AIndex];
+  Item := ListViewApps.Items.Add;
+  if Info.IsTopMost then
+    Item.Caption := 'Evet'
+  else
+    Item.Caption := 'Hayir';
+  Item.SubItems.Add(Info.ExeName);
+  Item.SubItems.Add(Info.Title);
+  Item.SubItems.Add(IntToStr(Info.PID));
+  if Info.StartTime > 0 then
+    Item.SubItems.Add(DateTimeToStr(Info.StartTime))
+  else
+    Item.SubItems.Add('-');
+  Item.Data := Pointer(Info.Handle);
+  if ASelHandles.IndexOf(Info.Handle) >= 0 then
+    Item.Selected := True;
+end;
+
+function TfrmMain.WindowIndexByHandle(AHandle: HWND): Integer;
+var
+  I: Integer;
+begin
+  Result := -1;
+  for I := 0 to FWindows.Count - 1 do
+    if FWindows[I].Handle = AHandle then
+    begin
+      Result := I;
+      Break;
+    end;
+end;
+
+procedure TfrmMain.ToggleGroupCollapse(const AExe: string);
+var
+  Idx: Integer;
+begin
+  Idx := FCollapsedExes.IndexOf(AExe);
+  if Idx >= 0 then
+    FCollapsedExes.Delete(Idx)
+  else
+    FCollapsedExes.Add(AExe);
+  RefreshListView;
+end;
+
+procedure TfrmMain.SortWindowList(AGrouped: Boolean);
 begin
   if FSortColumn < 0 then
     Exit;
-  Col := FSortColumn;
-  Asc := FSortAscending;
   FWindows.Sort(TComparer<TWindowInfo>.Construct(
     function(const A, B: TWindowInfo): Integer
     begin
-      case Col of
-        0: Result := CompareText(BoolToStr(A.IsTopMost), BoolToStr(B.IsTopMost));
-        1: Result := CompareText(A.ExeName, B.ExeName);
-        2: Result := CompareText(A.Title, B.Title);
-        3: Result := CompareValue(A.PID, B.PID);
-        4: Result := CompareDateTime(A.StartTime, B.StartTime);
+      if AGrouped then
+      begin
+        // Gruplama acikken once exe adina gore grupla, grup icinde secili alana gore
+        Result := CompareText(A.ExeName, B.ExeName);
+        if Result = 0 then
+          Result := CompareWindowInfos(A, B);
+      end
       else
-        Result := 0;
-      end;
-      if not Asc then
-        Result := -Result;
+        Result := CompareWindowInfos(A, B);
     end));
+end;
+
+function TfrmMain.CompareWindowInfos(const A, B: TWindowInfo): Integer;
+begin
+  case FSortColumn of
+    0: Result := CompareText(BoolToStr(A.IsTopMost), BoolToStr(B.IsTopMost));
+    1: Result := CompareText(A.ExeName, B.ExeName);
+    2: Result := CompareText(A.Title, B.Title);
+    3: Result := CompareValue(A.PID, B.PID);
+    4: Result := CompareDateTime(A.StartTime, B.StartTime);
+  else
+    Result := 0;
+  end;
+  if not FSortAscending then
+    Result := -Result;
 end;
 
 procedure TfrmMain.UpdateColumnHeaders;
@@ -496,44 +596,126 @@ end;
 
 procedure TfrmMain.btnToggleOnTopClick(Sender: TObject);
 var
-  Idx: Integer;
+  I, Idx: Integer;
+  Item: TListItem;
   Info: TWindowInfo;
-  NewState: Boolean;
+  NewState, AllTopMost: Boolean;
   ExeLower: string;
+  Exes: TStringList;
 begin
-  if not Assigned(ListViewApps.Selected) then
-  begin
-    ShowMessage('Lutfen listeden bir uygulama secin.');
-    Exit;
+  Exes := TStringList.Create;
+  try
+    Exes.Sorted := True;
+    Exes.Duplicates := dupIgnore;
+
+    // Secili (grup satiri olmayan) tum satirlari topla
+    AllTopMost := True;
+    for I := 0 to ListViewApps.Items.Count - 1 do
+    begin
+      Item := ListViewApps.Items[I];
+      if not Item.Selected then
+        Continue;
+      if HWND(Item.Data) = HWND(-1) then
+        Continue; // grup satiri atlanir
+      Idx := WindowIndexByHandle(HWND(Item.Data));
+      if Idx < 0 then
+        Continue;
+      if not FWindows[Idx].IsTopMost then
+        AllTopMost := False;
+      ExeLower := LowerCase(FWindows[Idx].ExeName);
+      if Exes.IndexOf(ExeLower) < 0 then
+        Exes.Add(ExeLower);
+    end;
+
+    if Exes.Count = 0 then
+    begin
+      ShowMessage('Lutfen listeden en az bir uygulama penceresi secin.');
+      Exit;
+    end;
+
+    // Secilenlerin tamami ontop ise kapat, degilse hepsini ontop yap
+    NewState := not AllTopMost;
+
+    for I := 0 to ListViewApps.Items.Count - 1 do
+    begin
+      Item := ListViewApps.Items[I];
+      if (not Item.Selected) or (HWND(Item.Data) = HWND(-1)) then
+        Continue;
+      Idx := WindowIndexByHandle(HWND(Item.Data));
+      if Idx < 0 then
+        Continue;
+      Info := FWindows[Idx];
+      ApplyTopMost(Info.Handle, NewState);
+      Info.IsTopMost := NewState;
+      FWindows[Idx] := Info;
+    end;
+
+    // Hatirlanan listeyi guncelle (exe bazli)
+    if NewState then
+    begin
+      for I := 0 to Exes.Count - 1 do
+        if FRemembered.IndexOf(Exes[I]) < 0 then
+          FRemembered.Add(Exes[I]);
+    end
+    else
+    begin
+      for I := 0 to Exes.Count - 1 do
+        if FRemembered.IndexOf(Exes[I]) >= 0 then
+          FRemembered.Delete(FRemembered.IndexOf(Exes[I]));
+    end;
+
+    SaveSettings;
+    RefreshListView;
+  finally
+    Exes.Free;
   end;
-
-  Idx := ListViewApps.Selected.Index;
-  if (Idx < 0) or (Idx >= FWindows.Count) then
-    Exit;
-
-  Info := FWindows[Idx];
-  NewState := not Info.IsTopMost;
-
-  ApplyTopMost(Info.Handle, NewState);
-  Info.IsTopMost := NewState;
-  FWindows[Idx] := Info;
-
-  ExeLower := LowerCase(Info.ExeName);
-  if NewState then
-  begin
-    if FRemembered.IndexOf(ExeLower) < 0 then
-      FRemembered.Add(ExeLower);
-  end
-  else if FRemembered.IndexOf(ExeLower) >= 0 then
-    FRemembered.Delete(FRemembered.IndexOf(ExeLower));
-
-  SaveSettings;
-  RefreshListView;
 end;
 
 procedure TfrmMain.ListViewAppsDblClick(Sender: TObject);
 begin
+  // Grup satirina cift tiklama: grubu ac/kapat
+  if chkGroup.Checked and Assigned(ListViewApps.Selected) and
+     (HWND(ListViewApps.Selected.Data) = HWND(-1)) then
+  begin
+    ToggleGroupCollapse(LowerCase(ListViewApps.Selected.SubItems[0]));
+    Exit;
+  end;
   btnToggleOnTopClick(Sender);
+end;
+
+procedure TfrmMain.ListViewAppsClick(Sender: TObject);
+var
+  Pt: TPoint;
+  Item: TListItem;
+begin
+  if not chkGroup.Checked then
+    Exit;
+  Pt := ListViewApps.ScreenToClient(Mouse.CursorPos);
+  Item := ListViewApps.GetItemAt(Pt.X, Pt.Y);
+  if Item = nil then
+    Exit;
+  // Grup satirina tek tiklama: grubu ac/kapat (dropdown)
+  if HWND(Item.Data) = HWND(-1) then
+    ToggleGroupCollapse(LowerCase(Item.SubItems[0]));
+end;
+
+procedure TfrmMain.ListViewAppsKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+var
+  I: Integer;
+begin
+  // Ctrl+A: tum pencere satirlarini sec (grup satirlari haric)
+  if (Key = Ord('A')) and (ssCtrl in Shift) then
+  begin
+    for I := 0 to ListViewApps.Items.Count - 1 do
+      if HWND(ListViewApps.Items[I].Data) <> HWND(-1) then
+        ListViewApps.Items[I].Selected := True;
+    Key := 0;
+  end;
+end;
+
+procedure TfrmMain.chkGroupClick(Sender: TObject);
+begin
+  RefreshListView;
 end;
 
 procedure TfrmMain.TimerRefreshTimer(Sender: TObject);
