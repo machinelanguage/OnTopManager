@@ -89,7 +89,14 @@ var
   frmMain: TfrmMain;
 
 // Ikinci kopya baslatildiginda: mevcut OnTop Manager penceresini bulup one getirir.
-// (OnTopManager.dpr'dan cagrilir; WM_USER+1 mesaji gonderir, FormCreate dinler.)
+// (OnTopManager.dpr'dan cagrilir; WM_USER+1 mesaji gonderir, form uMain'de dinler.)
+function ActivateExistingWindow(Wnd: HWND; LParam: LPARAM): BOOL; stdcall;
+
+implementation
+
+{$R *.dfm}
+
+// Ikinci kopya baslatildiginda: mevcut OnTop Manager penceresini bulup one getirir.
 function ActivateExistingWindow(Wnd: HWND; LParam: LPARAM): BOOL; stdcall;
 var
   Buf: array[0..63] of Char;
@@ -105,10 +112,6 @@ begin
     Result := False; // bulduk, dur
   end;
 end;
-
-implementation
-
-{$R *.dfm}
 
 { ---------------------------------------------------------------------------
   Yardimci fonksiyonlar
