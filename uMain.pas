@@ -102,7 +102,7 @@ type
     procedure SendActiveToTray;
     procedure RestoreLastHidden;
     procedure RestoreHiddenIndex(AIndex: Integer);
-    procedure ApplyHotkeySettings;
+    function ApplyHotkeySettings: string;
     procedure UpdateTrayState;
     procedure RebuildHiddenMenu;
   public
@@ -321,6 +321,7 @@ end;
 procedure TfrmMain.FormCreate(Sender: TObject);
 var
   AppDataDir: string;
+  HkMsg: string;
 begin
   FWindows := TList<TWindowInfo>.Create;
   FRemembered := TStringList.Create;
@@ -360,9 +361,11 @@ begin
   TrayIcon2.Icon.Assign(TrayIcon1.Icon);
 
   LoadSettings;
-  ApplyHotkeySettings;
+  HkMsg := ApplyHotkeySettings;
   UpdateTrayState;
   RefreshListView;
+  if HkMsg <> '' then
+    StatusBar1.SimpleText := HkMsg; // Kisayol cakisma uyarisini kaybetme
 
   // Surum bilgisini form basliginda goster (dproj'taki version kaynagindan okunur)
   if GetAppVersion <> '' then
@@ -897,9 +900,17 @@ var
   I: Integer;
 begin
   H := GetForegroundWindow;
-  // Kendi penceremizi ve bos durumu atla
-  if (H = 0) or (H = Handle) or (H = Application.Handle) then
+  if H = 0 then
     Exit;
+  // Kisayola basildiginda odakta olan pencere bizimkisiyse (ornegin "Uygula"'ya
+  // basar basmaz kisayolu denemek icin), kendimizi tray'a atalim: boylece
+  // kisayolun calistigi gorulur hale gelir.
+  if (H = Handle) or (H = Application.Handle) then
+  begin
+    Hide;
+    TrayIcon1.Visible := True;
+    Exit;
+  end;
   // Zaten gizli listede varsa yeniden ekleme
   for I := 0 to FHidden.Count - 1 do
     if FHidden[I] = H then
@@ -935,7 +946,7 @@ begin
   RefreshListView;
 end;
 
-procedure TfrmMain.ApplyHotkeySettings;
+function TfrmMain.ApplyHotkeySettings: string;
 var
   Ok1, Ok2: Boolean;
 begin
@@ -943,8 +954,15 @@ begin
   UnregisterHotKey(Handle, 2);
   Ok1 := RegisterHotKey(Handle, 1, HotKeyMods(hkSend.HotKey), hkSend.HotKey and $FF);
   Ok2 := RegisterHotKey(Handle, 2, HotKeyMods(hkRestore.HotKey), hkRestore.HotKey and $FF);
-  if (not Ok1) or (not Ok2) then
-    StatusBar1.SimpleText := 'Uyari: bazi kisayollar kaydedilemedi (baska uygulama kullanıyor olabilir).';
+  // Bos donerse basari; dolu donerse kullaniciya gosterilecek uyari.
+  if (not Ok1) and (not Ok2) then
+    Result := 'Uyari: iki kisayol da kaydedilemedi (baska bir uygulama ayni kombinasyonu kullaniyor olabilir).'
+  else if not Ok1 then
+    Result := 'Uyari: "Tray''a At" kisayolu kaydedilemedi (baska bir uygulama ayni kombinasyonu kullaniyor olabilir).'
+  else if not Ok2 then
+    Result := 'Uyari: "Geri Getir" kisayolu kaydedilemedi (baska bir uygulama ayni kombinasyonu kullaniyor olabilir).'
+  else
+    Result := '';
 end;
 
 procedure TfrmMain.UpdateTrayState;
@@ -1025,11 +1043,17 @@ begin
 end;
 
 procedure TfrmMain.btnApplyHKClick(Sender: TObject);
+var
+  Msg: string;
 begin
-  ApplyHotkeySettings;
+  Msg := ApplyHotkeySettings;
   SaveSettings;
   UpdateStatusBar;
-  StatusBar1.SimpleText := StatusBar1.SimpleText + '  |  Kisayollar uygulandi';
+  if Msg <> '' then
+    MessageBeep(MB_ICONWARNING)
+  else
+    Msg := 'Kisayollar uygulandi';
+  StatusBar1.SimpleText := StatusBar1.SimpleText + '  |  ' + Msg;
 end;
 
 procedure TfrmMain.TimerRefreshTimer(Sender: TObject);
