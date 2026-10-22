@@ -148,6 +148,16 @@ begin
     Result := '(basliksiz pencere)';
 end;
 
+const
+  // Windows SDK'daki HOTKEYF_* sabitleri (commctrl.h). Delphi 10.4'un
+  // Winapi unitlerinde deklare edilmedigi icin burada tanimlaniyor.
+  // THotKey.HotKey degerinin yuksek baytinda kullanilan bitler:
+  // 1=Shift, 2=Ctrl, 4=Alt, 8=Extend
+  HOTKEYF_SHIFT   = $01;
+  HOTKEYF_CONTROL = $02;
+  HOTKEYF_ALT     = $04;
+  HOTKEYF_EXT     = $08;
+
 // THotKey degerindeki modifier bitlerini RegisterHotKey MOD_* bayraklarina cevirir
 function HotKeyMods(AHotKey: Integer): UINT;
 var
