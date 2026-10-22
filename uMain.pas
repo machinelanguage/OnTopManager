@@ -68,6 +68,7 @@ type
     procedure ListViewAppsClick(Sender: TObject);
     procedure ListViewAppsKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure btnApplyHKClick(Sender: TObject);
+    procedure HKChange(Sender: TObject);
     procedure chkOwnIconClick(Sender: TObject);
     procedure TrayIcon2Click(Sender: TObject);
     procedure PopupMenuTrayPopup(Sender: TObject);
@@ -321,7 +322,6 @@ end;
 procedure TfrmMain.FormCreate(Sender: TObject);
 var
   AppDataDir: string;
-  HkMsg: string;
 begin
   FWindows := TList<TWindowInfo>.Create;
   FRemembered := TStringList.Create;
@@ -361,11 +361,10 @@ begin
   TrayIcon2.Icon.Assign(TrayIcon1.Icon);
 
   LoadSettings;
-  HkMsg := ApplyHotkeySettings;
+  // Not: LoadSettings, THotKey.HotKey degerlerini degistirir ve bu da
+  // HKChange'i tetikleyerek kisayollari zaten yeniden kaydeder (ApplyHotkeySettings).
   UpdateTrayState;
   RefreshListView;
-  if HkMsg <> '' then
-    StatusBar1.SimpleText := HkMsg; // Kisayol cakisma uyarisini kaybetme
 
   // Surum bilgisini form basliginda goster (dproj'taki version kaynagindan okunur)
   if GetAppVersion <> '' then
@@ -1039,6 +1038,15 @@ end;
 procedure TfrmMain.chkOwnIconClick(Sender: TObject);
 begin
   UpdateTrayState;
+  SaveSettings;
+end;
+
+procedure TfrmMain.HKChange(Sender: TObject);
+begin
+  // THotKey'te yeni kombinasyon secildigi AN kaydi tazele: kullanicinin
+  // ayrica "Uygula"ya basmasini beklemeden kisayol gecerli olsun.
+  // (Kullanici raporu: tanimlanan yeni tuslar devreye girmiyordu.)
+  ApplyHotkeySettings;
   SaveSettings;
 end;
 

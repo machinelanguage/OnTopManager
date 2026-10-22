@@ -50,6 +50,7 @@ object frmMain: TfrmMain
       Width = 130
       Height = 20
       HotKey = 1608
+      OnChange = HKChange
       TabOrder = 0
     end
     object lblHK2: TLabel
@@ -65,6 +66,7 @@ object frmMain: TfrmMain
       Width = 130
       Height = 20
       HotKey = 1610
+      OnChange = HKChange
       TabOrder = 1
     end
     object btnApplyHK: TButton
