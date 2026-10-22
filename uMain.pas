@@ -68,6 +68,7 @@ type
     FSortColumn: Integer;
     FSortAscending: Boolean;
     procedure WMSysCommand(var Msg: TWMSysCommand); message WM_SYSCOMMAND;
+    procedure WMActivateInstance(var Msg: TMessage); message WM_USER + 1;
     procedure EnumRunningWindows;
     procedure LoadSettings;
     procedure SaveSettings;
@@ -86,6 +87,24 @@ type
 
 var
   frmMain: TfrmMain;
+
+// Ikinci kopya baslatildiginda: mevcut OnTop Manager penceresini bulup one getirir.
+// (OnTopManager.dpr'dan cagrilir; WM_USER+1 mesaji gonderir, FormCreate dinler.)
+function ActivateExistingWindow(Wnd: HWND; LParam: LPARAM): BOOL; stdcall;
+var
+  Buf: array[0..63] of Char;
+  ClassName: string;
+begin
+  Result := True; // enum devam etsin
+  FillChar(Buf, SizeOf(Buf), 0);
+  GetClassName(Wnd, Buf, Length(Buf));
+  ClassName := Buf;
+  if (ClassName = 'TfrmMain') and IsWindowVisible(Wnd) then
+  begin
+    PostMessage(Wnd, WM_USER + 1, 0, 0);
+    Result := False; // bulduk, dur
+  end;
+end;
 
 implementation
 
@@ -319,6 +338,18 @@ begin
   end
   else
     inherited;
+end;
+
+procedure TfrmMain.WMActivateInstance(var Msg: TMessage);
+begin
+  // Ikinci kopya baslatildiginda (dpr'daki EnumWindows bu mesaji gonderir):
+  // gizli/tepside olsun da olmasin da mevcut pencereyi one getir.
+  Msg.Result := 0;
+  Show;
+  WindowState := wsNormal;
+  Application.Restore;
+  Application.BringToFront;
+  SetForegroundWindow(Handle);
 end;
 
 procedure TfrmMain.miShowClick(Sender: TObject);
