@@ -14,3 +14,6 @@ __history/
 __recovery/
 .lib
 .a
+
+# Derleme ciktisi kaynak dosyalari (exe icine gomulur ama repoda gerekmez)
+OnTopManager.res
