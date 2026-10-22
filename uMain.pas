@@ -687,15 +687,30 @@ procedure TfrmMain.ListViewAppsClick(Sender: TObject);
 var
   Pt: TPoint;
   Item: TListItem;
+  H: HWND;
+  Idx: Integer;
 begin
-  if not chkGroup.Checked then
-    Exit;
   Pt := ListViewApps.ScreenToClient(Mouse.CursorPos);
   Item := ListViewApps.GetItemAt(Pt.X, Pt.Y);
   if Item = nil then
     Exit;
+
+  // Pencere satirina tek tiklama: ilgili pencereyi one getir (bring to front)
+  if HWND(Item.Data) <> HWND(-1) then
+  begin
+    H := HWND(Item.Data);
+    Idx := WindowIndexByHandle(H);
+    if (Idx >= 0) and IsWindow(H) then
+    begin
+      if IsIconic(H) then
+        ShowWindow(H, SW_RESTORE);
+      SetForegroundWindow(H);
+    end;
+    Exit;
+  end;
+
   // Grup satirina tek tiklama: grubu ac/kapat (dropdown)
-  if HWND(Item.Data) = HWND(-1) then
+  if chkGroup.Checked then
     ToggleGroupCollapse(LowerCase(Item.SubItems[0]));
 end;
 
