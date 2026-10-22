@@ -19,7 +19,7 @@ object frmMain: TfrmMain
   TextHeight = 15
   object lblInfo: TLabel
     Left = 0
-    Top = 48
+    Top = 82
     Width = 660
     Height = 20
     Align = alTop
@@ -28,6 +28,63 @@ object frmMain: TfrmMain
       'Birden fazla pencereyi (Ctrl/Ctrl+A) secip "Secilenleri Ontop Yap / Kaldir"' +
       ' butonuna basin. Pencereyi one getirmek icin satira cift tiklayin.'
     ExplicitWidth = 540
+  end
+  object PanelHK: TPanel
+    Left = 0
+    Top = 48
+    Width = 660
+    Height = 34
+    Align = alTop
+    BevelOuter = bvNone
+    TabOrder = 3
+    object lblHK1: TLabel
+      Left = 8
+      Top = 10
+      Width = 55
+      Height = 15
+      Caption = 'Tray'#39'a At:'
+    end
+    object hkSend: THotKey
+      Left = 74
+      Top = 7
+      Width = 130
+      Height = 20
+      HotKey = 1608
+      TabOrder = 0
+    end
+    object lblHK2: TLabel
+      Left = 214
+      Top = 10
+      Width = 56
+      Height = 15
+      Caption = 'Geri Getir:'
+    end
+    object hkRestore: THotKey
+      Left = 278
+      Top = 7
+      Width = 130
+      Height = 20
+      HotKey = 1610
+      TabOrder = 1
+    end
+    object btnApplyHK: TButton
+      Left = 416
+      Top = 5
+      Width = 70
+      Height = 25
+      Caption = 'Uygula'
+      TabOrder = 2
+      OnClick = btnApplyHKClick
+    end
+    object chkOwnIcon: TCheckBox
+      Left = 494
+      Top = 9
+      Width = 160
+      Height = 17
+      Caption = 'Gizliyi kendi ikonunda goster'
+      TabOrder = 3
+      OnClick = chkOwnIconClick
+    end
   end
   object ListViewApps: TListView
     Left = 0
@@ -106,7 +163,14 @@ object frmMain: TfrmMain
     Left = 528
     Top = 16
   end
+  object TrayIcon2: TTrayIcon
+    Visible = False
+    OnClick = TrayIcon2Click
+    Left = 448
+    Top = 16
+  end
   object PopupMenuTray: TPopupMenu
+    OnPopup = PopupMenuTrayPopup
     Left = 592
     Top = 72
     object miShow: TMenuItem
