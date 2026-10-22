@@ -41,6 +41,7 @@ object frmMain: TfrmMain
     RowSelect = True
     TabOrder = 0
     ViewStyle = vsReport
+    OnColumnClick = ListViewAppsColumnClick
     OnDblClick = ListViewAppsDblClick
   end
   object PanelTop: TPanel
@@ -79,6 +80,7 @@ object frmMain: TfrmMain
     SimplePanel = True
   end
   object TimerRefresh: TTimer
+    Enabled = False
     Interval = 2000
     OnTimer = TimerRefreshTimer
     Left = 592

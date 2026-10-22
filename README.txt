@@ -27,6 +27,11 @@ Nasil calisir:
     (tray) kucultur; tepsi simgesine cift tiklayarak tekrar acabilir, sag tik
     menusunden "Cikis" ile programi tamamen kapatabilirsiniz.
 
+  - Liste basliklarina (Ontop, Uygulama (EXE), Pencere Basligi, PID,
+    Baslangic Tarihi) tiklayarak o alana gore artan/azalan sirada
+    siralama yapabilirsiniz; aktif siralama sutununda ^ / v isareti gorunur.
+  - Sistem tepsisindeki simge uygulamanin kendi (Application) ikonudur.
+
 Notlar:
   - Bu ortamda Delphi kurulu olmadigi icin kod burada derlenip test edilememistir;
     Delphi 10.4 ile acip derlemeniz ve calistirmaniz gerekir.

@@ -17,7 +17,8 @@ interface
 uses
   Winapi.Windows, Winapi.Messages, Winapi.PsAPI, Winapi.ShellAPI,
   System.SysUtils, System.Variants, System.Classes, System.IniFiles,
-  System.Generics.Collections,
+  System.Generics.Collections, System.Generics.Defaults, System.DateUtils,
+  System.Math,
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ComCtrls,
   Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.Menus;
 
@@ -28,6 +29,7 @@ type
     ExeName: string;   // orn: notepad.exe
     Title: string;
     IsTopMost: Boolean;
+    StartTime: TDateTime; // ilgili sürecin baslangic tarihi/saati
   end;
 
   TfrmMain = class(TForm)
@@ -52,11 +54,15 @@ type
     procedure miShowClick(Sender: TObject);
     procedure miExitClick(Sender: TObject);
     procedure TrayIcon1DblClick(Sender: TObject);
+    procedure ListViewAppsColumnClick(Sender: TObject; Column: TListColumn);
   private
     FWindows: TList<TWindowInfo>;
     FRemembered: TStringList;     // hatirlanan exe adlari (kucuk harf)
     FIniPath: string;
     FClosing: Boolean;
+    FSortColumn: Integer;
+    FSortAscending: Boolean;
+    procedure WMSysCommand(var Msg: TWMSysCommand); message WM_SYSCOMMAND;
     procedure EnumRunningWindows;
     procedure LoadSettings;
     procedure SaveSettings;
@@ -64,6 +70,8 @@ type
     procedure RefreshListView;
     procedure AutoApplyRemembered;
     procedure UpdateStatusBar;
+    procedure SortWindowList;
+    procedure UpdateColumnHeaders;
   public
   end;
 
@@ -114,6 +122,30 @@ begin
   end;
 end;
 
+function GetProcessStartTime(APID: DWORD): TDateTime;
+var
+  hProc: THandle;
+  CreationTime, ExitTime, KernelTime, UserTime, LocalFT: TFileTime;
+  SysTime: TSystemTime;
+begin
+  Result := 0;
+  hProc := OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, APID);
+  if hProc = 0 then
+    hProc := OpenProcess(PROCESS_QUERY_INFORMATION, False, APID);
+  if hProc = 0 then
+    Exit;
+  try
+    if GetProcessTimes(hProc, CreationTime, ExitTime, KernelTime, UserTime) then
+    begin
+      FileTimeToLocalFileTime(CreationTime, LocalFT);
+      FileTimeToSystemTime(LocalFT, SysTime);
+      Result := SystemTimeToDateTime(SysTime);
+    end;
+  finally
+    CloseHandle(hProc);
+  end;
+end;
+
 type
   PEnumContext = ^TEnumContext;
   TEnumContext = record
@@ -157,6 +189,7 @@ begin
   Info.Title := TitleBuf;
   Info.ExeName := GetExeNameFromPID(PID);
   Info.IsTopMost := (ExStyle and WS_EX_TOPMOST) <> 0;
+  Info.StartTime := GetProcessStartTime(PID);
 
   if Info.ExeName = '' then
     Exit;
@@ -188,14 +221,23 @@ begin
   ListViewApps.Columns.Clear;
   with ListViewApps.Columns.Add do begin Caption := 'Ontop'; Width := 60; end;
   with ListViewApps.Columns.Add do begin Caption := 'Uygulama (EXE)'; Width := 160; end;
-  with ListViewApps.Columns.Add do begin Caption := 'Pencere Basligi'; Width := 300; end;
+  with ListViewApps.Columns.Add do begin Caption := 'Pencere Basligi'; Width := 260; end;
   with ListViewApps.Columns.Add do begin Caption := 'PID'; Width := 70; end;
+  with ListViewApps.Columns.Add do begin Caption := 'Baslangic Tarihi'; Width := 140; end;
+
+  FSortColumn := -1;
+  FSortAscending := True;
+
+  // Sistem tepsisi (tray) simgesi: uygulamanin kendi ikonu kullanilir
+  TrayIcon1.Icon.Assign(Application.Icon);
+  if TrayIcon1.Icon.Empty then
+    TrayIcon1.Icon.Handle := LoadIcon(0, IDI_APPLICATION);
+  TrayIcon1.Hint := 'OnTop Manager';
 
   LoadSettings;
   RefreshListView;
 
-  TimerRefresh.Interval := 2000;
-  TimerRefresh.Enabled := True;
+  TimerRefresh.Enabled := False; // liste otomatik yenilenmesin, sadece manuel/F5
 end;
 
 procedure TfrmMain.FormDestroy(Sender: TObject);
@@ -215,6 +257,19 @@ begin
     Hide;
     TrayIcon1.Visible := True;
   end;
+end;
+
+procedure TfrmMain.WMSysCommand(var Msg: TWMSysCommand);
+begin
+  // Baslik cubugundaki "Simge durumuna kucult" (asagi ok) tiklaninca
+  // pencereyi gormez kil, sistem tepsisine yerlestir.
+  if (Msg.CmdType and $FFF0) = SC_MINIMIZE then
+  begin
+    Hide;
+    TrayIcon1.Visible := True;
+  end
+  else
+    inherited;
 end;
 
 procedure TfrmMain.miShowClick(Sender: TObject);
@@ -336,6 +391,7 @@ begin
 
   EnumRunningWindows;
   AutoApplyRemembered;
+  SortWindowList;
 
   ListViewApps.Items.BeginUpdate;
   try
@@ -351,6 +407,10 @@ begin
       Item.SubItems.Add(Info.ExeName);
       Item.SubItems.Add(Info.Title);
       Item.SubItems.Add(IntToStr(Info.PID));
+      if Info.StartTime > 0 then
+        Item.SubItems.Add(DateTimeToStr(Info.StartTime))
+      else
+        Item.SubItems.Add('-');
       Item.Data := Pointer(Info.Handle);
       if Info.Handle = SelHandle then
         Item.Selected := True;
@@ -359,7 +419,68 @@ begin
     ListViewApps.Items.EndUpdate;
   end;
 
+  UpdateColumnHeaders;
   UpdateStatusBar;
+end;
+
+procedure TfrmMain.SortWindowList;
+var
+  Col: Integer;
+  Asc: Boolean;
+begin
+  if FSortColumn < 0 then
+    Exit;
+  Col := FSortColumn;
+  Asc := FSortAscending;
+  FWindows.Sort(TComparer<TWindowInfo>.Construct(
+    function(const A, B: TWindowInfo): Integer
+    begin
+      case Col of
+        0: Result := CompareText(BoolToStr(A.IsTopMost), BoolToStr(B.IsTopMost));
+        1: Result := CompareText(A.ExeName, B.ExeName);
+        2: Result := CompareText(A.Title, B.Title);
+        3: Result := CompareValue(A.PID, B.PID);
+        4: Result := CompareDateTime(A.StartTime, B.StartTime);
+      else
+        Result := 0;
+      end;
+      if not Asc then
+        Result := -Result;
+    end));
+end;
+
+procedure TfrmMain.UpdateColumnHeaders;
+const
+  BaseCaptions: array[0..4] of string = ('Ontop', 'Uygulama (EXE)',
+    'Pencere Basligi', 'PID', 'Baslangic Tarihi');
+var
+  I: Integer;
+  Caption: string;
+begin
+  for I := 0 to ListViewApps.Columns.Count - 1 do
+  begin
+    Caption := BaseCaptions[I];
+    if I = FSortColumn then
+    begin
+      if FSortAscending then
+        Caption := Caption + ' ^'
+      else
+        Caption := Caption + ' v';
+    end;
+    ListViewApps.Columns[I].Caption := Caption;
+  end;
+end;
+
+procedure TfrmMain.ListViewAppsColumnClick(Sender: TObject; Column: TListColumn);
+begin
+  if FSortColumn = Column.Index then
+    FSortAscending := not FSortAscending
+  else
+  begin
+    FSortColumn := Column.Index;
+    FSortAscending := True;
+  end;
+  RefreshListView;
 end;
 
 procedure TfrmMain.UpdateStatusBar;

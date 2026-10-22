@@ -1,0 +1,16 @@
+# Delphi build output
+*.dcu
+*.exe
+*.map
+*.rsm
+*.tds
+*.bak
+*.~*
+*.local
+*.identcache
+*.projdata
+*.dsk
+__history/
+__recovery/
+.lib
+.a
