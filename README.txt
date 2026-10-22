@@ -45,6 +45,7 @@ Surum numarasi Delphi proje seceneklerinde (OnTopManager.dproj > VerInfo_Keys,
 FileVersion/ProductVersion) tutulur ve form basliginda "vX.Y.Z" olarak gosterilir.
 Her yeni ozellik talebinde minor deger bir arttirilir.
 
+  v1.3.0 - Pencereyi one getirme artik cift tiklama ile; tek tiklama sadece secim yapar
   v1.2.0 - Tek kopya korumasi (mutex): ikinci baslatista mevcut pencere one gelir
   v1.1.0 - Coklu secim ile toplu ontop; uygulama bazli gruplama/dropdown; tiklanan pencereyi one getirme
   v1.0.0 - Ilk surum: pencere listesi, ontop yap/kaldir, hatirlama (INI), tray, sutun siralama
