@@ -150,25 +150,43 @@ begin
 end;
 
 const
-  // Windows SDK'daki HOTKEYF_* sabitleri (commctrl.h). Delphi 10.4'un
-  // Winapi unitlerinde deklare edilmedigi icin burada tanimlaniyor.
-  // THotKey.HotKey degerinin yuksek baytinda kullanilan bitler:
-  // 1=Shift, 2=Ctrl, 4=Alt, 8=Extend
+  // Eski INI degerleri hatali olarak HKM/HOTKEYF kodlamasiyla yazilmisti
+  // (commctrl.h: yuksek baytta 1=Shift, 2=Ctrl, 4=Alt). THotKey.HotKey ise
+  // TShortCut tipidir (Vcl.Menus): dusuk bayt = Windows sanal tus kodu (VK_),
+  // modifier bitleri 13-15'te (scShift=$2000, scCtrl=$4000, scAlt=$8000).
+  // NormalizeHotKeyValue eski kodlamayi TShortCut'a cevirmek icin kullanilir.
   HOTKEYF_SHIFT   = $01;
   HOTKEYF_CONTROL = $02;
   HOTKEYF_ALT     = $04;
-  HOTKEYF_EXT     = $08;
 
-// THotKey degerindeki modifier bitlerini RegisterHotKey MOD_* bayraklarina cevirir
-function HotKeyMods(AHotKey: Integer): UINT;
+// Eski HOTKEYF kodlamali degeri TShortCut'a (Vcl.Menus kodlamasi) cevirir.
+// Zaten gecerli bir TShortCut ise (modifier bitleri 13-15'te) oldugu gibi dondurur.
+function NormalizeHotKeyValue(AValue: Integer): TShortCut;
 var
-  M: Byte;
+  V, Mods, Sc: Integer;
 begin
-  M := (AHotKey shr 8) and $FF;
+  V := AValue and $FFFF;
+  if (V and (scShift or scCtrl or scAlt)) <> 0 then
+    Exit(V); // zaten TShortCut kodlamasi
+  Mods := (V shr 8) and $FF; // eski HOTKEYF bitleri (8-10)
+  if Mods = 0 then
+    Exit(V); // modifiersiz gecerli TShortCut (yalnizca VK)
+  Sc := 0;
+  if (Mods and HOTKEYF_SHIFT) <> 0 then Sc := Sc or scShift;
+  if (Mods and HOTKEYF_CONTROL) <> 0 then Sc := Sc or scCtrl;
+  if (Mods and HOTKEYF_ALT) <> 0 then Sc := Sc or scAlt;
+  Result := Sc or (V and $FF);
+end;
+
+// THotKey.HotKey (TShortCut) degerindeki modifier bitlerini RegisterHotKey
+// MOD_* bayraklarina cevirir. Dikkat: modifier bitleri yuksek baytta degil,
+// 13-15. bitlerdedir (scShift=$2000, scCtrl=$4000, scAlt=$8000).
+function HotKeyMods(AHotKey: Integer): UINT;
+begin
   Result := 0;
-  if (M and HOTKEYF_SHIFT) <> 0 then Result := Result or MOD_SHIFT;
-  if (M and HOTKEYF_CONTROL) <> 0 then Result := Result or MOD_CONTROL;
-  if (M and HOTKEYF_ALT) <> 0 then Result := Result or MOD_ALT;
+  if (AHotKey and scShift) <> 0 then Result := Result or MOD_SHIFT;
+  if (AHotKey and scCtrl) <> 0 then Result := Result or MOD_CONTROL;
+  if (AHotKey and scAlt) <> 0 then Result := Result or MOD_ALT;
 end;
 
 { ---------------------------------------------------------------------------
@@ -462,9 +480,10 @@ begin
       if Ini.ReadBool('OnTop', Keys[I], False) then
         FRemembered.Add(LowerCase(Keys[I]));
 
-    // Kisayollar ve tray gosterim modu (varsayilan: Ctrl+Shift+H / Ctrl+Shift+J)
-    hkSend.HotKey := Ini.ReadInteger('Hotkeys', 'SendHotKey', 840);
-    hkRestore.HotKey := Ini.ReadInteger('Hotkeys', 'RestoreHotKey', 842);
+    // Kisayollar ve tray gosterim modu (varsayilan: Ctrl+Shift+H / Ctrl+Shift+J;
+    // TShortCut kodlamasi: scCtrl($4000) or scShift($2000) or VK = 24648 / 24650)
+    hkSend.HotKey := NormalizeHotKeyValue(Ini.ReadInteger('Hotkeys', 'SendHotKey', 24648));
+    hkRestore.HotKey := NormalizeHotKeyValue(Ini.ReadInteger('Hotkeys', 'RestoreHotKey', 24650));
     chkOwnIcon.Checked := Ini.ReadBool('Options', 'OwnTrayIcon', False);
   finally
     Keys.Free;

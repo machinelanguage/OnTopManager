@@ -49,7 +49,7 @@ object frmMain: TfrmMain
       Top = 7
       Width = 130
       Height = 20
-      HotKey = 840
+      HotKey = 24648
       OnChange = HKChange
       TabOrder = 0
     end
@@ -65,7 +65,7 @@ object frmMain: TfrmMain
       Top = 7
       Width = 130
       Height = 20
-      HotKey = 842
+      HotKey = 24650
       OnChange = HKChange
       TabOrder = 1
     end

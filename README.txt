@@ -48,6 +48,7 @@ Surum numarasi Delphi proje seceneklerinde (OnTopManager.dproj > VerInfo_Keys,
 FileVersion/ProductVersion) tutulur ve form basliginda "vX.Y.Z" olarak gosterilir.
 Her yeni ozellik talebinde minor deger bir arttirilir.
 
+  v1.6.0 - Varsayilan kisayollar Ctrl+Shift+H (tray'a at) ve Ctrl+Shift+J (geri getir) olarak degistirildi; THotKey.HotKey TShortCut kodlamasi ile HotKeyMods uyumsuzlugu giderildi (Shift/Ctrl/Alt iceren kisayollar artik dogru kaydediliyor, oncesinde modifier'siz H/J olarak kaydediliyordu)
   v1.4.0 - Ayarlanabilir kisayollarla pencereyi tray'a atma (Ctrl+Alt+H) ve geri getirme (Ctrl+Alt+J); gizli pencereler ana ikonun menusunde kumelenir veya istenirse ikinci tray ikonunda gosterilir
   v1.3.0 - Pencereyi one getirme artik cift tiklama ile; tek tiklama sadece secim yapar
   v1.2.0 - Tek kopya korumasi (mutex): ikinci baslatista mevcut pencere one gelir
