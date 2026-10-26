@@ -16,4 +16,4 @@ __recovery/
 .a
 
 # Derleme ciktisi kaynak dosyalari (exe icine gomulur ama repoda gerekmez)
-OnTopManager.res
+*.res
