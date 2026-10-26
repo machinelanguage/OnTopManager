@@ -70,6 +70,7 @@ type
     procedure btnApplyHKClick(Sender: TObject);
     procedure HKChange(Sender: TObject);
     procedure chkOwnIconClick(Sender: TObject);
+    procedure chkHKEnabledClick(Sender: TObject);
     procedure TrayIcon2Click(Sender: TObject);
     procedure PopupMenuTrayPopup(Sender: TObject);
     procedure miHiddenClick(Sender: TObject);
@@ -106,6 +107,7 @@ type
     function ApplyHotkeySettings: string;
     procedure UpdateTrayState;
     procedure RebuildHiddenMenu;
+    procedure UpdateHotkeyUI;
   public
   end;
 
@@ -379,8 +381,12 @@ begin
   TrayIcon2.Icon.Assign(TrayIcon1.Icon);
 
   LoadSettings;
-  // Not: LoadSettings, THotKey.HotKey degerlerini degistirir ve bu da
-  // HKChange'i tetikleyerek kisayollari zaten yeniden kaydeder (ApplyHotkeySettings).
+  UpdateHotkeyUI;
+  // Kisayollar acilista dogrudan devreye aliniyor. (Not: LoadSettings, HotKey
+  // degerini degistirirse HKChange ile zaten kaydediliyor; ancak INI'deki deger
+  // varsayilanla ayniysa OnChange tetiklenmedigi icin kayit yapilmiyordu ve
+  // kisayol ilk "Uygula"ya dek oluyordu. Bu yuzden acilista acikca kaydediyoruz.)
+  ApplyHotkeySettings;
   UpdateTrayState;
   RefreshListView;
 
@@ -482,6 +488,7 @@ begin
 
     // Kisayollar ve tray gosterim modu (varsayilan: Ctrl+Shift+H / Ctrl+Shift+J;
     // TShortCut kodlamasi: scCtrl($4000) or scShift($2000) or VK = 24648 / 24650)
+    chkHKEnabled.Checked := Ini.ReadBool('Hotkeys', 'Enabled', True);
     hkSend.HotKey := NormalizeHotKeyValue(Ini.ReadInteger('Hotkeys', 'SendHotKey', 24648));
     hkRestore.HotKey := NormalizeHotKeyValue(Ini.ReadInteger('Hotkeys', 'RestoreHotKey', 24650));
     chkOwnIcon.Checked := Ini.ReadBool('Options', 'OwnTrayIcon', False);
@@ -502,6 +509,7 @@ begin
     for I := 0 to FRemembered.Count - 1 do
       Ini.WriteBool('OnTop', FRemembered[I], True);
 
+    Ini.WriteBool('Hotkeys', 'Enabled', chkHKEnabled.Checked);
     Ini.WriteInteger('Hotkeys', 'SendHotKey', hkSend.HotKey);
     Ini.WriteInteger('Hotkeys', 'RestoreHotKey', hkRestore.HotKey);
     Ini.WriteBool('Options', 'OwnTrayIcon', chkOwnIcon.Checked);
@@ -970,6 +978,8 @@ var
 begin
   UnregisterHotKey(Handle, 1);
   UnregisterHotKey(Handle, 2);
+  if not chkHKEnabled.Checked then
+    Exit(''); // kisayollar kapali: kaydi temizle, uyari verme
   Ok1 := RegisterHotKey(Handle, 1, HotKeyMods(hkSend.HotKey), hkSend.HotKey and $FF);
   Ok2 := RegisterHotKey(Handle, 2, HotKeyMods(hkRestore.HotKey), hkRestore.HotKey and $FF);
   // Bos donerse basari; dolu donerse kullaniciya gosterilecek uyari.
@@ -1058,6 +1068,30 @@ procedure TfrmMain.chkOwnIconClick(Sender: TObject);
 begin
   UpdateTrayState;
   SaveSettings;
+end;
+
+procedure TfrmMain.UpdateHotkeyUI;
+var
+  E: Boolean;
+begin
+  // Kisayollar kapaliyken ilgili kontroller de pasif gorunsun
+  E := chkHKEnabled.Checked;
+  hkSend.Enabled := E;
+  hkRestore.Enabled := E;
+  btnApplyHK.Enabled := E;
+end;
+
+procedure TfrmMain.chkHKEnabledClick(Sender: TObject);
+begin
+  UpdateHotkeyUI;
+  // Acilip kapanma aninda uygula ve kalici hale getir
+  ApplyHotkeySettings;
+  SaveSettings;
+  UpdateStatusBar;
+  if chkHKEnabled.Checked then
+    StatusBar1.SimpleText := StatusBar1.SimpleText + '  |  Kisayollar etkin'
+  else
+    StatusBar1.SimpleText := StatusBar1.SimpleText + '  |  Kisayollar devre disi';
 end;
 
 procedure TfrmMain.HKChange(Sender: TObject);

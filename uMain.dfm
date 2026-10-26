@@ -88,6 +88,26 @@ object frmMain: TfrmMain
       OnClick = chkOwnIconClick
     end
   end
+  object PanelHKEnabled: TPanel
+    Left = 0
+    Top = 82
+    Width = 660
+    Height = 26
+    Align = alTop
+    BevelOuter = bvNone
+    TabOrder = 4
+    object chkHKEnabled: TCheckBox
+      Left = 8
+      Top = 5
+      Width = 220
+      Height = 17
+      Caption = 'Kisayollar etkin (acilista otomatik devreye girer)'
+      Checked = True
+      State = cbChecked
+      TabOrder = 0
+      OnClick = chkHKEnabledClick
+    end
+  end
   object ListViewApps: TListView
     Left = 0
     Top = 68
