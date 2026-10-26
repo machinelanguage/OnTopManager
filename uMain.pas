@@ -44,6 +44,8 @@ type
     hkRestore: THotKey;
     btnApplyHK: TButton;
     chkOwnIcon: TCheckBox;
+    PanelHKEnabled: TPanel;
+    chkHKEnabled: TCheckBox;
     ListViewApps: TListView;
     TimerRefresh: TTimer;
     StatusBar1: TStatusBar;
