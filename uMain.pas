@@ -462,9 +462,9 @@ begin
       if Ini.ReadBool('OnTop', Keys[I], False) then
         FRemembered.Add(LowerCase(Keys[I]));
 
-    // Kisayollar ve tray gosterim modu (varsayilan: Ctrl+Alt+H / Ctrl+Alt+J)
-    hkSend.HotKey := Ini.ReadInteger('Hotkeys', 'SendHotKey', 1608);
-    hkRestore.HotKey := Ini.ReadInteger('Hotkeys', 'RestoreHotKey', 1610);
+    // Kisayollar ve tray gosterim modu (varsayilan: Ctrl+Shift+H / Ctrl+Shift+J)
+    hkSend.HotKey := Ini.ReadInteger('Hotkeys', 'SendHotKey', 840);
+    hkRestore.HotKey := Ini.ReadInteger('Hotkeys', 'RestoreHotKey', 842);
     chkOwnIcon.Checked := Ini.ReadBool('Options', 'OwnTrayIcon', False);
   finally
     Keys.Free;

@@ -33,6 +33,9 @@ Nasil calisir:
   - Pencerenin sag ustundeki X butonu programi kapatmaz, sistem tepsisine
     (tray) kucultur; tepsi simgesine cift tiklayarak tekrar acabilir, sag tik
     menusunden "Cikis" ile programi tamamen kapatabilirsiniz.
+  - Varsayilan kisayollar: Ctrl+Shift+H ile on plandaki pencereyi tray'a at,
+    Ctrl+Shift+J ile geri getir (kisayollar arayuzden degistirilebilir;
+    degisen deger %APPDATA%\OnTopManager\settings.ini dosyasinda saklanir).
 
   - Liste basliklarina (Ontop, Uygulama (EXE), Pencere Basligi, PID,
     Baslangic Tarihi) tiklayarak o alana gore artan/azalan sirada
