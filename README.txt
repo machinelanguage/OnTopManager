@@ -50,6 +50,7 @@ Surum numarasi Delphi proje seceneklerinde (OnTopManager.dproj > VerInfo_Keys,
 FileVersion/ProductVersion) tutulur ve form basliginda "vX.Y.Z" olarak gosterilir.
 Her yeni ozellik talebinde minor deger bir arttirilir.
 
+  v1.11.1 - Kayitli tercih yoksa tray popup menusu varsayilan olarak sol tikla acilir.
   v1.11.0 - Onceki pencere acma tercihi geri alindi. Tray menusu sag veya sol tikla acilacak sekilde secilir; tercih INI dosyasinda saklanir. Varsayilan sag tiktir.
   v1.9.0 - Programdan cikista tray ile gizlenen tum acik pencereler geri getirilir.
   v1.8.2 - Delphi basliklarinda eksik GetShellWindow icin dogrudan user32 bildirimi eklendi.

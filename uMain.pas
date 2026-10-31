@@ -407,7 +407,7 @@ begin
   if GetAppVersion <> '' then
     Caption := Format('OnTop Manager v%s', [GetAppVersion])
   else
-    Caption := 'OnTop Manager v1.11.0';
+    Caption := 'OnTop Manager v1.11.1';
 
   TimerRefresh.Enabled := False; // liste otomatik yenilenmesin, sadece manuel/F5
 end;
@@ -517,7 +517,7 @@ begin
   Ini := TIniFile.Create(FIniPath);
   Keys := TStringList.Create;
   try
-    cboTrayPopup.ItemIndex := EnsureRange(Ini.ReadInteger('Options', 'TrayPopupMouse', 0), 0, 1);
+    cboTrayPopup.ItemIndex := EnsureRange(Ini.ReadInteger('Options', 'TrayPopupMouse', 1), 0, 1);
     Ini.ReadSection('OnTop', Keys);
     for I := 0 to Keys.Count - 1 do
       if Ini.ReadBool('OnTop', Keys[I], False) then

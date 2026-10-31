@@ -42,3 +42,5 @@ The prior TrayOpenMouse setting is ignored and deleted on the next settings save
 Manual: select each button and check that only that button opens the hidden-app
 popup; select Show and Exit from that popup. Restart to check persistence.
 Source checks passed; Delphi compilation and interactive testing unverified.
+
+v1.11.1: Default TrayPopupMouse is 1 (left) in both INI loading and DFM. Saved preferences are preserved. Source checks passed; Delphi build/runtime unverified.

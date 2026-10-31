@@ -120,9 +120,9 @@ object frmMain: TfrmMain
       Width = 190
       Height = 23
       Style = csDropDownList
-      ItemIndex = 0
+      ItemIndex = 1
       TabOrder = 1
-      Text = 'Sag tik'
+      Text = 'Sol tik'
       OnChange = cboTrayPopupChange
       Items.Strings = (
         'Sag tik'
