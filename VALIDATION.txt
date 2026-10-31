@@ -1,0 +1,19 @@
+v1.8.0 verification
+===================
+Source checks: git diff --check; project XML parsed; DFM/resource references present.
+No Delphi compiler was found in PATH or standard Embarcadero installation folders.
+Compilation and interactive Windows behavior have NOT been verified.
+
+Manual checks on Delphi 10.4 (Win32 and Win64):
+1. Build OnTopManager.dproj.
+2. Open Notepad and another application; hide each with Ctrl+Shift+H.
+   After each press, focus must move to the next visible application.
+3. Hold the shortcut: only one window should hide. Release and press again:
+   the newly focused application should hide.
+4. Open the main tray menu: each hidden window should have its own icon.
+   Clicking either entry should restore the matching window.
+5. Ctrl+Shift+J restores the most recently hidden window.
+6. Repeat with grouping and alternate tray icon options on/off.
+7. Close a hidden application externally, reopen the menu, and verify its
+   stale entry disappears. Check that a title containing & is displayed literally.
+8. Check focus transfer when OnTop Manager itself is active.

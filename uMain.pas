@@ -1,4 +1,4 @@
-unit uMain;
+﻿unit uMain;
 
 {
   OnTop Manager
@@ -20,7 +20,7 @@ uses
   System.Generics.Collections, System.Generics.Defaults, System.DateUtils,
   System.Math,
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ComCtrls,
-  Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.Menus;
+  Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.Menus, Vcl.ImgList;
 
 type
   TWindowInfo = record
@@ -82,6 +82,7 @@ type
     FCollapsedExes: TStringList;  // kapatilmis (collapsed) gruplarin exe adlari
     FHidden: TList<HWND>;         // kisayolla tray'a atilan pencereler (0 = en yeni)
     FMenuItems: TList<TMenuItem>; // gizli pencereler icin dinamik menu ogeleri
+    FHiddenImages: TImageList;
     FIniPath: string;
     FClosing: Boolean;
     FSortColumn: Integer;
@@ -354,6 +355,10 @@ begin
   FCollapsedExes.Duplicates := dupIgnore;
   FHidden := TList<HWND>.Create;
   FMenuItems := TList<TMenuItem>.Create;
+  FHiddenImages := TImageList.Create(Self);
+  FHiddenImages.Width := GetSystemMetrics(SM_CXSMICON);
+  FHiddenImages.Height := GetSystemMetrics(SM_CYSMICON);
+  PopupMenuTray.Images := FHiddenImages;
   FClosing := False;
 
   AppDataDir := IncludeTrailingPathDelimiter(GetEnvironmentVariable('APPDATA')) + 'OnTopManager';
@@ -396,7 +401,7 @@ begin
   if GetAppVersion <> '' then
     Caption := Format('OnTop Manager v%s', [GetAppVersion])
   else
-    Caption := 'OnTop Manager v1.4';
+    Caption := 'OnTop Manager v1.8.0';
 
   TimerRefresh.Enabled := False; // liste otomatik yenilenmesin, sadece manuel/F5
 end;
@@ -922,14 +927,75 @@ begin
   end;
 end;
 
+// Explicit pointer-sized declaration for Win32 and Win64.
+function WindowMessageTimeout(hWnd: HWND; Msg: UINT; wParam: WPARAM;
+  lParam: LPARAM; Flags, Timeout: UINT; ResultValue: Pointer): LRESULT; stdcall;
+  external 'user32.dll' name 'SendMessageTimeoutW';
+
+// Copy the borrowed window/class icon: the image list owns its own copy.
+function CopyWindowIcon(H: HWND): HICON;
+var
+  IconValue: DWORD_PTR;
+  Source: HICON;
+begin
+  Source := 0;
+  IconValue := 0;
+  if WindowMessageTimeout(H, WM_GETICON, ICON_SMALL2, 0,
+    SMTO_ABORTIFHUNG or SMTO_BLOCK, 100, @IconValue) <> 0 then
+    Source := HICON(IconValue);
+  if Source = 0 then
+  begin
+    IconValue := 0;
+    if WindowMessageTimeout(H, WM_GETICON, ICON_SMALL, 0,
+      SMTO_ABORTIFHUNG or SMTO_BLOCK, 100, @IconValue) <> 0 then
+      Source := HICON(IconValue);
+  end;
+  if Source = 0 then
+    Source := HICON(GetClassLongPtr(H, GCLP_HICONSM));
+  if Source = 0 then
+    Source := HICON(GetClassLongPtr(H, GCLP_HICON));
+  if Source = 0 then
+  begin
+    IconValue := 0;
+    if WindowMessageTimeout(H, WM_GETICON, ICON_BIG, 0,
+      SMTO_ABORTIFHUNG or SMTO_BLOCK, 100, @IconValue) <> 0 then
+      Source := HICON(IconValue);
+  end;
+  if Source = 0 then
+    Source := LoadIcon(0, IDI_APPLICATION);
+  Result := CopyIcon(Source);
+end;
+
+// Walk the current Z order before hiding the foreground window.
+function NextApplicationWindow(Current: HWND): HWND;
+var
+  W: HWND;
+  PID: DWORD;
+begin
+  Result := 0;
+  W := GetWindow(Current, GW_HWNDNEXT);
+  while W <> 0 do
+  begin
+    GetWindowThreadProcessId(W, PID);
+    if IsWindowVisible(W) and IsWindowEnabled(W) and
+      not IsIconic(W) and (GetWindow(W, GW_OWNER) = 0) and
+      (GetWindowTextLength(W) > 0) and
+      (GetWindowLong(W, GWL_EXSTYLE) and WS_EX_TOOLWINDOW = 0) and
+      (PID <> GetCurrentProcessId) and
+      (W <> GetShellWindow) and (W <> GetDesktopWindow) then
+      Exit(W);
+    W := GetWindow(W, GW_HWNDNEXT);
+  end;
+end;
 procedure TfrmMain.SendActiveToTray;
 var
-  H: HWND;
+  H, NextWindow: HWND;
   I: Integer;
 begin
   H := GetForegroundWindow;
-  if H = 0 then
+  if (H = 0) or (H = GetShellWindow) or (H = GetDesktopWindow) then
     Exit;
+  NextWindow := NextApplicationWindow(H);
   // Kisayola basildiginda odakta olan pencere bizimkisiyse (ornegin "Uygula"'ya
   // basar basmaz kisayolu denemek icin), kendimizi tray'a atalim: boylece
   // kisayolun calistigi gorulur hale gelir.
@@ -937,6 +1003,7 @@ begin
   begin
     Hide;
     TrayIcon1.Visible := True;
+    BringWindowToFront(NextWindow);
     Exit;
   end;
   // Zaten gizli listede varsa yeniden ekleme
@@ -946,6 +1013,7 @@ begin
 
   FHidden.Insert(0, H); // en yeni, listenin basina
   ShowWindow(H, SW_HIDE); // gorev cubugundan kalkar, tray'da bekler
+  BringWindowToFront(NextWindow);
   UpdateTrayState;
   RefreshListView;
 end;
@@ -982,8 +1050,9 @@ begin
   UnregisterHotKey(Handle, 2);
   if not chkHKEnabled.Checked then
     Exit(''); // kisayollar kapali: kaydi temizle, uyari verme
-  Ok1 := RegisterHotKey(Handle, 1, HotKeyMods(hkSend.HotKey), hkSend.HotKey and $FF);
-  Ok2 := RegisterHotKey(Handle, 2, HotKeyMods(hkRestore.HotKey), hkRestore.HotKey and $FF);
+  // MOD_NOREPEAT ($4000): one action per key press.
+  Ok1 := RegisterHotKey(Handle, 1, HotKeyMods(hkSend.HotKey) or $4000, hkSend.HotKey and $FF);
+  Ok2 := RegisterHotKey(Handle, 2, HotKeyMods(hkRestore.HotKey) or $4000, hkRestore.HotKey and $FF);
   // Bos donerse basari; dolu donerse kullaniciya gosterilecek uyari.
   if (not Ok1) and (not Ok2) then
     Result := 'Uyari: iki kisayol da kaydedilemedi (baska bir uygulama ayni kombinasyonu kullaniyor olabilir).'
@@ -1020,11 +1089,13 @@ procedure TfrmMain.RebuildHiddenMenu;
 var
   I: Integer;
   mi: TMenuItem;
+  Icon: TIcon;
 begin
   // Onceki dinamik ogeleri kaldir
   for I := 0 to FMenuItems.Count - 1 do
     FMenuItems[I].Free;
   FMenuItems.Clear;
+  FHiddenImages.Clear;
   if FHidden.Count = 0 then
     Exit;
 
@@ -1038,7 +1109,14 @@ begin
   for I := 0 to FHidden.Count - 1 do
   begin
     mi := TMenuItem.Create(PopupMenuTray);
-    mi.Caption := GetWindowTitleText(FHidden[I]);
+    mi.Caption := StringReplace(GetWindowTitleText(FHidden[I]), '&', '&&', [rfReplaceAll]);
+    Icon := TIcon.Create;
+    try
+      Icon.Handle := CopyWindowIcon(FHidden[I]);
+      mi.ImageIndex := FHiddenImages.AddIcon(Icon);
+    finally
+      Icon.Free;
+    end;
     mi.Tag := FHidden[I];
     mi.OnClick := miHiddenClick;
     PopupMenuTray.Items.Insert(PopupMenuTray.Items.IndexOf(miExit), mi);
@@ -1048,6 +1126,7 @@ end;
 
 procedure TfrmMain.PopupMenuTrayPopup(Sender: TObject);
 begin
+  UpdateTrayState;
   RebuildHiddenMenu;
 end;
 
