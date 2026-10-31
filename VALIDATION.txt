@@ -21,3 +21,11 @@ Manual checks on Delphi 10.4 (Win32 and Win64):
 v1.8.1: Replaced unavailable GCLP icon names with documented local indices (-34/-14). Source checks passed; Delphi compilation remains unverified.
 
 v1.8.2: Added explicit HWND/stdcall GetShellWindow import from user32.dll and updated both call sites. Source checks passed; Delphi compilation remains unverified.
+
+v1.9.0: Exit restores all hidden windows. RestoreAllHidden is called on explicit
+Exit and again during FormDestroy; clearing the list makes the second call safe.
+Closed window handles are skipped; no list/control refresh occurs during cleanup.
+Source checks passed; Delphi compilation and runtime checks remain unverified.
+Manual: hide three app windows; choose Exit; all must become visible.
+Repeat with one app closed externally and with a minimized window hidden.
+Closing the manager with X must still only send the manager to the tray.

@@ -105,6 +105,7 @@ type
     procedure ToggleGroupCollapse(const AExe: string);
     procedure BringWindowToFront(AHandle: HWND);
     procedure SendActiveToTray;
+    procedure RestoreAllHidden;
     procedure RestoreLastHidden;
     procedure RestoreHiddenIndex(AIndex: Integer);
     function ApplyHotkeySettings: string;
@@ -401,7 +402,7 @@ begin
   if GetAppVersion <> '' then
     Caption := Format('OnTop Manager v%s', [GetAppVersion])
   else
-    Caption := 'OnTop Manager v1.8.2';
+    Caption := 'OnTop Manager v1.9.0';
 
   TimerRefresh.Enabled := False; // liste otomatik yenilenmesin, sadece manuel/F5
 end;
@@ -410,6 +411,7 @@ procedure TfrmMain.FormDestroy(Sender: TObject);
 begin
   UnregisterHotKey(Handle, 1);
   UnregisterHotKey(Handle, 2);
+  RestoreAllHidden;
   FWindows.Free;
   FRemembered.Free;
   FCollapsedExes.Free;
@@ -470,6 +472,8 @@ end;
 procedure TfrmMain.miExitClick(Sender: TObject);
 begin
   FClosing := True;
+  RestoreAllHidden;
+  TrayIcon2.Visible := False;
   TrayIcon1.Visible := False;
   Close;
 end;
@@ -1023,6 +1027,29 @@ begin
   BringWindowToFront(NextWindow);
   UpdateTrayState;
   RefreshListView;
+end;
+
+procedure TfrmMain.RestoreAllHidden;
+var
+  I: Integer;
+  H: HWND;
+begin
+  if FHidden = nil then
+    Exit;
+  // Oldest first. Do not refresh controls while the form is being destroyed.
+  // Async calls also let an unresponsive external app avoid blocking exit.
+  for I := FHidden.Count - 1 downto 0 do
+  begin
+    H := FHidden[I];
+    if IsWindow(H) then
+    begin
+      if IsIconic(H) then
+        ShowWindowAsync(H, SW_RESTORE)
+      else
+        ShowWindowAsync(H, SW_SHOWNOACTIVATE);
+    end;
+  end;
+  FHidden.Clear;
 end;
 
 procedure TfrmMain.RestoreLastHidden;

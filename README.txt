@@ -50,6 +50,7 @@ Surum numarasi Delphi proje seceneklerinde (OnTopManager.dproj > VerInfo_Keys,
 FileVersion/ProductVersion) tutulur ve form basliginda "vX.Y.Z" olarak gosterilir.
 Her yeni ozellik talebinde minor deger bir arttirilir.
 
+  v1.9.0 - Programdan cikista tray ile gizlenen tum acik pencereler geri getirilir.
   v1.8.2 - Delphi basliklarinda eksik GetShellWindow icin dogrudan user32 bildirimi eklendi.
   v1.8.1 - Delphi Win32 GCLP_HICONSM/GCLP_HICON tanimsiz sabit hatasi giderildi.
   v1.8.0 - Tray menusunde pencere simgeleri; kisayolla gizleme sonrasi siradaki gorunur uygulamaya odak gecisi; basili tutulan kisayolun tekrar tetiklenmesi engellendi.
