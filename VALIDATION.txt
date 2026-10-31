@@ -29,3 +29,9 @@ Source checks passed; Delphi compilation and runtime checks remain unverified.
 Manual: hide three app windows; choose Exit; all must become visible.
 Repeat with one app closed externally and with a minimized window hidden.
 Closing the manager with X must still only send the manager to the tray.
+
+v1.10.0: Added DFM-owned tray opening selector and persistent TrayOpenMouse option.
+Modes: 0=left double click (default), 1=left single click, 2=right single click.
+The opposite button opens the menu, preserving access to hidden apps and Exit.
+Manual: check all three modes, menu actions, settings persistence after restart,
+and changing the option while hotkeys are disabled. Delphi build/runtime unverified.

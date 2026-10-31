@@ -101,11 +101,33 @@ object frmMain: TfrmMain
       Top = 5
       Width = 220
       Height = 17
-      Caption = 'Kisayollar etkin (acilista otomatik devreye girer)'
+      Caption = 'Kisayollar etkin'
       Checked = True
       State = cbChecked
       TabOrder = 0
       OnClick = chkHKEnabledClick
+    end
+    object lblTrayOpen: TLabel
+      Left = 250
+      Top = 6
+      Width = 117
+      Height = 15
+      Caption = 'Tray simgesinden ac:'
+    end
+    object cboTrayOpen: TComboBox
+      Left = 380
+      Top = 2
+      Width = 190
+      Height = 23
+      Style = csDropDownList
+      ItemIndex = 0
+      TabOrder = 1
+      Text = 'Sol cift tik'
+      OnChange = cboTrayOpenChange
+      Items.Strings = (
+        'Sol cift tik'
+        'Sol tek tik'
+        'Sag tek tik')
     end
   end
   object ListViewApps: TListView
@@ -179,9 +201,9 @@ object frmMain: TfrmMain
     Top = 16
   end
   object TrayIcon1: TTrayIcon
-    PopupMenu = PopupMenuTray
     Visible = True
     OnDblClick = TrayIcon1DblClick
+    OnMouseUp = TrayIcon1MouseUp
     Left = 528
     Top = 16
   end
