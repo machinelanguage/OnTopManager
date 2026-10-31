@@ -401,7 +401,7 @@ begin
   if GetAppVersion <> '' then
     Caption := Format('OnTop Manager v%s', [GetAppVersion])
   else
-    Caption := 'OnTop Manager v1.8.0';
+    Caption := 'OnTop Manager v1.8.1';
 
   TimerRefresh.Enabled := False; // liste otomatik yenilenmesin, sadece manuel/F5
 end;
@@ -934,6 +934,10 @@ function WindowMessageTimeout(hWnd: HWND; Msg: UINT; wParam: WPARAM;
 
 // Copy the borrowed window/class icon: the image list owns its own copy.
 function CopyWindowIcon(H: HWND): HICON;
+const
+  // Windows class icon indices; some Delphi Win32 headers omit GCLP_* names.
+  ClassSmallIconIndex = -34;
+  ClassIconIndex = -14;
 var
   IconValue: DWORD_PTR;
   Source: HICON;
@@ -951,9 +955,9 @@ begin
       Source := HICON(IconValue);
   end;
   if Source = 0 then
-    Source := HICON(GetClassLongPtr(H, GCLP_HICONSM));
+    Source := HICON(GetClassLongPtr(H, ClassSmallIconIndex));
   if Source = 0 then
-    Source := HICON(GetClassLongPtr(H, GCLP_HICON));
+    Source := HICON(GetClassLongPtr(H, ClassIconIndex));
   if Source = 0 then
   begin
     IconValue := 0;

@@ -17,3 +17,5 @@ Manual checks on Delphi 10.4 (Win32 and Win64):
 7. Close a hidden application externally, reopen the menu, and verify its
    stale entry disappears. Check that a title containing & is displayed literally.
 8. Check focus transfer when OnTop Manager itself is active.
+
+v1.8.1: Replaced unavailable GCLP icon names with documented local indices (-34/-14). Source checks passed; Delphi compilation remains unverified.

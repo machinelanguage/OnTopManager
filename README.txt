@@ -50,6 +50,7 @@ Surum numarasi Delphi proje seceneklerinde (OnTopManager.dproj > VerInfo_Keys,
 FileVersion/ProductVersion) tutulur ve form basliginda "vX.Y.Z" olarak gosterilir.
 Her yeni ozellik talebinde minor deger bir arttirilir.
 
+  v1.8.1 - Delphi Win32 GCLP_HICONSM/GCLP_HICON tanimsiz sabit hatasi giderildi.
   v1.8.0 - Tray menusunde pencere simgeleri; kisayolla gizleme sonrasi siradaki gorunur uygulamaya odak gecisi; basili tutulan kisayolun tekrar tetiklenmesi engellendi.
   v1.7.0 - Kisayollar ilk acilista "Uygula" beklemeksizin otomatik devreye girer; "Kisayollar etkin" onay kutusu ile acilip kapatilabilir (tercih INI'de saklanir)
   v1.6.0 - Varsayilan kisayollar Ctrl+Shift+H (tray'a at) ve Ctrl+Shift+J (geri getir) olarak degistirildi; THotKey.HotKey TShortCut kodlamasi ile HotKeyMods uyumsuzlugu giderildi (Shift/Ctrl/Alt iceren kisayollar artik dogru kaydediliyor, oncesinde modifier'siz H/J olarak kaydediliyordu)
