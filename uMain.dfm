@@ -107,14 +107,14 @@ object frmMain: TfrmMain
       TabOrder = 0
       OnClick = chkHKEnabledClick
     end
-    object lblTrayOpen: TLabel
+    object lblTrayPopup: TLabel
       Left = 250
       Top = 6
       Width = 117
       Height = 15
-      Caption = 'Tray simgesinden ac:'
+      Caption = 'Tray menusu:'
     end
-    object cboTrayOpen: TComboBox
+    object cboTrayPopup: TComboBox
       Left = 380
       Top = 2
       Width = 190
@@ -122,12 +122,11 @@ object frmMain: TfrmMain
       Style = csDropDownList
       ItemIndex = 0
       TabOrder = 1
-      Text = 'Sol cift tik'
-      OnChange = cboTrayOpenChange
+      Text = 'Sag tik'
+      OnChange = cboTrayPopupChange
       Items.Strings = (
-        'Sol cift tik'
-        'Sol tek tik'
-        'Sag tek tik')
+        'Sag tik'
+        'Sol tik')
     end
   end
   object ListViewApps: TListView

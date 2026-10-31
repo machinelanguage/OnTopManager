@@ -50,7 +50,7 @@ Surum numarasi Delphi proje seceneklerinde (OnTopManager.dproj > VerInfo_Keys,
 FileVersion/ProductVersion) tutulur ve form basliginda "vX.Y.Z" olarak gosterilir.
 Her yeni ozellik talebinde minor deger bir arttirilir.
 
-  v1.10.0 - Tray simgesinden acma: sol cift tik, sol tek tik veya sag tek tik secilebilir. Tercih INI dosyasinda saklanir. Sag tek tikla acma secilirse tray menusu sol tikla acilir; diger modlarda sag tikla acilir.
+  v1.11.0 - Onceki pencere acma tercihi geri alindi. Tray menusu sag veya sol tikla acilacak sekilde secilir; tercih INI dosyasinda saklanir. Varsayilan sag tiktir.
   v1.9.0 - Programdan cikista tray ile gizlenen tum acik pencereler geri getirilir.
   v1.8.2 - Delphi basliklarinda eksik GetShellWindow icin dogrudan user32 bildirimi eklendi.
   v1.8.1 - Delphi Win32 GCLP_HICONSM/GCLP_HICON tanimsiz sabit hatasi giderildi.

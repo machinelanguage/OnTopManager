@@ -35,3 +35,10 @@ Modes: 0=left double click (default), 1=left single click, 2=right single click.
 The opposite button opens the menu, preserving access to hidden apps and Exit.
 Manual: check all three modes, menu actions, settings persistence after restart,
 and changing the option while hotkeys are disabled. Delphi build/runtime unverified.
+
+v1.11.0 supersedes the v1.10.0 behavior: the selector configures only the popup
+menu button (0=right default, 1=left). Single click no longer opens the manager.
+The prior TrayOpenMouse setting is ignored and deleted on the next settings save.
+Manual: select each button and check that only that button opens the hidden-app
+popup; select Show and Exit from that popup. Restart to check persistence.
+Source checks passed; Delphi compilation and interactive testing unverified.

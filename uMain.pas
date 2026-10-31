@@ -45,8 +45,8 @@ type
     btnApplyHK: TButton;
     chkOwnIcon: TCheckBox;
     PanelHKEnabled: TPanel;
-    lblTrayOpen: TLabel;
-    cboTrayOpen: TComboBox;
+    lblTrayPopup: TLabel;
+    cboTrayPopup: TComboBox;
     chkHKEnabled: TCheckBox;
     ListViewApps: TListView;
     TimerRefresh: TTimer;
@@ -69,7 +69,7 @@ type
     procedure TrayIcon1DblClick(Sender: TObject);
     procedure TrayIcon1MouseUp(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
-    procedure cboTrayOpenChange(Sender: TObject);
+    procedure cboTrayPopupChange(Sender: TObject);
     procedure ListViewAppsColumnClick(Sender: TObject; Column: TListColumn);
     procedure chkGroupClick(Sender: TObject);
     procedure ListViewAppsClick(Sender: TObject);
@@ -407,7 +407,7 @@ begin
   if GetAppVersion <> '' then
     Caption := Format('OnTop Manager v%s', [GetAppVersion])
   else
-    Caption := 'OnTop Manager v1.10.0';
+    Caption := 'OnTop Manager v1.11.0';
 
   TimerRefresh.Enabled := False; // liste otomatik yenilenmesin, sadece manuel/F5
 end;
@@ -471,8 +471,7 @@ end;
 
 procedure TfrmMain.TrayIcon1DblClick(Sender: TObject);
 begin
-  if cboTrayOpen.ItemIndex = 0 then
-    miShowClick(Sender);
+  miShowClick(Sender);
 end;
 
 procedure TfrmMain.TrayIcon1MouseUp(Sender: TObject; Button: TMouseButton;
@@ -480,13 +479,9 @@ procedure TfrmMain.TrayIcon1MouseUp(Sender: TObject; Button: TMouseButton;
 var
   Pt: TPoint;
 begin
-  if ((cboTrayOpen.ItemIndex = 1) and (Button = mbLeft)) or
-     ((cboTrayOpen.ItemIndex = 2) and (Button = mbRight)) then
-    miShowClick(Sender)
-  else if ((cboTrayOpen.ItemIndex = 2) and (Button = mbLeft)) or
-          ((cboTrayOpen.ItemIndex <> 2) and (Button = mbRight)) then
+  if ((cboTrayPopup.ItemIndex = 0) and (Button = mbRight)) or
+     ((cboTrayPopup.ItemIndex = 1) and (Button = mbLeft)) then
   begin
-    // The opposite button retains access to hidden windows and Exit.
     GetCursorPos(Pt);
     SetForegroundWindow(Handle);
     PopupMenuTray.Popup(Pt.X, Pt.Y);
@@ -494,7 +489,7 @@ begin
   end;
 end;
 
-procedure TfrmMain.cboTrayOpenChange(Sender: TObject);
+procedure TfrmMain.cboTrayPopupChange(Sender: TObject);
 begin
   SaveSettings;
 end;
@@ -522,7 +517,7 @@ begin
   Ini := TIniFile.Create(FIniPath);
   Keys := TStringList.Create;
   try
-    cboTrayOpen.ItemIndex := EnsureRange(Ini.ReadInteger('Options', 'TrayOpenMouse', 0), 0, 2);
+    cboTrayPopup.ItemIndex := EnsureRange(Ini.ReadInteger('Options', 'TrayPopupMouse', 0), 0, 1);
     Ini.ReadSection('OnTop', Keys);
     for I := 0 to Keys.Count - 1 do
       if Ini.ReadBool('OnTop', Keys[I], False) then
@@ -555,7 +550,8 @@ begin
     Ini.WriteInteger('Hotkeys', 'SendHotKey', hkSend.HotKey);
     Ini.WriteInteger('Hotkeys', 'RestoreHotKey', hkRestore.HotKey);
     Ini.WriteBool('Options', 'OwnTrayIcon', chkOwnIcon.Checked);
-    Ini.WriteInteger('Options', 'TrayOpenMouse', cboTrayOpen.ItemIndex);
+    Ini.DeleteKey('Options', 'TrayOpenMouse');
+    Ini.WriteInteger('Options', 'TrayPopupMouse', cboTrayPopup.ItemIndex);
   finally
     Ini.Free;
   end;
