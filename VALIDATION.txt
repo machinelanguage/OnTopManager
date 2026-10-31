@@ -19,3 +19,5 @@ Manual checks on Delphi 10.4 (Win32 and Win64):
 8. Check focus transfer when OnTop Manager itself is active.
 
 v1.8.1: Replaced unavailable GCLP icon names with documented local indices (-34/-14). Source checks passed; Delphi compilation remains unverified.
+
+v1.8.2: Added explicit HWND/stdcall GetShellWindow import from user32.dll and updated both call sites. Source checks passed; Delphi compilation remains unverified.

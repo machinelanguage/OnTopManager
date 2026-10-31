@@ -401,7 +401,7 @@ begin
   if GetAppVersion <> '' then
     Caption := Format('OnTop Manager v%s', [GetAppVersion])
   else
-    Caption := 'OnTop Manager v1.8.1';
+    Caption := 'OnTop Manager v1.8.2';
 
   TimerRefresh.Enabled := False; // liste otomatik yenilenmesin, sadece manuel/F5
 end;
@@ -927,6 +927,9 @@ begin
   end;
 end;
 
+function ShellWindowHandle: HWND; stdcall;
+  external 'user32.dll' name 'GetShellWindow';
+
 // Explicit pointer-sized declaration for Win32 and Win64.
 function WindowMessageTimeout(hWnd: HWND; Msg: UINT; wParam: WPARAM;
   lParam: LPARAM; Flags, Timeout: UINT; ResultValue: Pointer): LRESULT; stdcall;
@@ -986,7 +989,7 @@ begin
       (GetWindowTextLength(W) > 0) and
       (GetWindowLong(W, GWL_EXSTYLE) and WS_EX_TOOLWINDOW = 0) and
       (PID <> GetCurrentProcessId) and
-      (W <> GetShellWindow) and (W <> GetDesktopWindow) then
+      (W <> ShellWindowHandle) and (W <> GetDesktopWindow) then
       Exit(W);
     W := GetWindow(W, GW_HWNDNEXT);
   end;
@@ -997,7 +1000,7 @@ var
   I: Integer;
 begin
   H := GetForegroundWindow;
-  if (H = 0) or (H = GetShellWindow) or (H = GetDesktopWindow) then
+  if (H = 0) or (H = ShellWindowHandle) or (H = GetDesktopWindow) then
     Exit;
   NextWindow := NextApplicationWindow(H);
   // Kisayola basildiginda odakta olan pencere bizimkisiyse (ornegin "Uygula"'ya
