@@ -50,6 +50,7 @@ Surum numarasi Delphi proje seceneklerinde (OnTopManager.dproj > VerInfo_Keys,
 FileVersion/ProductVersion) tutulur ve form basliginda "vX.Y.Z" olarak gosterilir.
 Her yeni ozellik talebinde minor deger bir arttirilir.
 
+  v1.12.1 - Program acilista ana pencereyi gostermeden dogrudan tray alanina yerlesir. Tray menusundeki Goster ile ana pencere acilir.
   v1.12.0 - Windows basladiginda calistir secenegi eklendi. Mevcut kullanicinin Run kaydina tirnakli EXE yolu yazilir; secim kaldirilinca yalnizca OnTopManager kaydi silinir. Varsayilan kapalidir.
   v1.11.1 - Kayitli tercih yoksa tray popup menusu varsayilan olarak sol tikla acilir.
   v1.11.0 - Onceki pencere acma tercihi geri alindi. Tray menusu sag veya sol tikla acilacak sekilde secilir; tercih INI dosyasinda saklanir. Varsayilan sag tiktir.

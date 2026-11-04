@@ -51,3 +51,5 @@ Programmatic checkbox updates are guarded; failed writes revert the toggle.
 Manual: enable, restart program, verify checked; sign out/in and verify launch.
 Disable, sign out/in and verify no automatic launch. Test a path with spaces.
 Source checks only; Delphi compilation and Windows logon behavior unverified.
+
+v1.12.1: Application.ShowMainForm=False before CreateForm/Run; TrayIcon1 remains visible. Manual: launch normally and at logon, check hidden main window and visible tray icon; open via Show, close to tray, exit. Delphi build/runtime unverified.

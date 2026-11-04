@@ -31,6 +31,8 @@ begin
 
   Application.Initialize;
   Application.MainFormOnTaskbar := True;
+  // Start in the notification area without briefly showing the main window.
+  Application.ShowMainForm := False;
   Application.Title := 'OnTop Manager';
   Application.CreateForm(TfrmMain, frmMain);
   Application.Run;
