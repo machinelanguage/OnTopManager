@@ -92,7 +92,7 @@ object frmMain: TfrmMain
     Left = 0
     Top = 82
     Width = 660
-    Height = 26
+    Height = 52
     Align = alTop
     BevelOuter = bvNone
     TabOrder = 4
@@ -127,6 +127,15 @@ object frmMain: TfrmMain
       Items.Strings = (
         'Sag tik'
         'Sol tik')
+    end
+    object chkStartWithWindows: TCheckBox
+      Left = 8
+      Top = 30
+      Width = 300
+      Height = 17
+      Caption = 'Windows basladiginda calistir'
+      TabOrder = 2
+      OnClick = chkStartWithWindowsClick
     end
   end
   object ListViewApps: TListView

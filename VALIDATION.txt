@@ -44,3 +44,10 @@ popup; select Show and Exit from that popup. Restart to check persistence.
 Source checks passed; Delphi compilation and interactive testing unverified.
 
 v1.11.1: Default TrayPopupMouse is 1 (left) in both INI loading and DFM. Saved preferences are preserved. Source checks passed; Delphi build/runtime unverified.
+
+v1.12.0: Added DFM-owned Windows startup checkbox. Reads actual HKCU Run value;
+writes a quoted executable path only on user toggle and removes only OnTopManager.
+Programmatic checkbox updates are guarded; failed writes revert the toggle.
+Manual: enable, restart program, verify checked; sign out/in and verify launch.
+Disable, sign out/in and verify no automatic launch. Test a path with spaces.
+Source checks only; Delphi compilation and Windows logon behavior unverified.

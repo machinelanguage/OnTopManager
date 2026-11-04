@@ -18,7 +18,7 @@ uses
   Winapi.Windows, Winapi.Messages, Winapi.PsAPI, Winapi.ShellAPI,
   System.SysUtils, System.Variants, System.Classes, System.IniFiles,
   System.Generics.Collections, System.Generics.Defaults, System.DateUtils,
-  System.Math,
+  System.Math, System.Win.Registry,
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ComCtrls,
   Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.Menus, Vcl.ImgList;
 
@@ -48,6 +48,7 @@ type
     lblTrayPopup: TLabel;
     cboTrayPopup: TComboBox;
     chkHKEnabled: TCheckBox;
+    chkStartWithWindows: TCheckBox;
     ListViewApps: TListView;
     TimerRefresh: TTimer;
     StatusBar1: TStatusBar;
@@ -70,6 +71,7 @@ type
     procedure TrayIcon1MouseUp(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
     procedure cboTrayPopupChange(Sender: TObject);
+    procedure chkStartWithWindowsClick(Sender: TObject);
     procedure ListViewAppsColumnClick(Sender: TObject; Column: TListColumn);
     procedure chkGroupClick(Sender: TObject);
     procedure ListViewAppsClick(Sender: TObject);
@@ -90,6 +92,7 @@ type
     FHiddenImages: TImageList;
     FIniPath: string;
     FClosing: Boolean;
+    FUpdatingStartup: Boolean;
     FSortColumn: Integer;
     FSortAscending: Boolean;
     procedure WMSysCommand(var Msg: TWMSysCommand); message WM_SYSCOMMAND;
@@ -117,6 +120,7 @@ type
     procedure UpdateTrayState;
     procedure RebuildHiddenMenu;
     procedure UpdateHotkeyUI;
+    procedure LoadStartupOption;
   public
   end;
 
@@ -394,6 +398,15 @@ begin
   TrayIcon2.Icon.Assign(TrayIcon1.Icon);
 
   LoadSettings;
+  try
+    LoadStartupOption;
+  except
+    on E: Exception do
+    begin
+      chkStartWithWindows.Enabled := False;
+      ShowMessage('Windows baslangic ayari okunamadi: ' + E.Message);
+    end;
+  end;
   UpdateHotkeyUI;
   // Kisayollar acilista dogrudan devreye aliniyor. (Not: LoadSettings, HotKey
   // degerini degistirirse HKChange ile zaten kaydediliyor; ancak INI'deki deger
@@ -407,7 +420,7 @@ begin
   if GetAppVersion <> '' then
     Caption := Format('OnTop Manager v%s', [GetAppVersion])
   else
-    Caption := 'OnTop Manager v1.11.1';
+    Caption := 'OnTop Manager v1.12.0';
 
   TimerRefresh.Enabled := False; // liste otomatik yenilenmesin, sadece manuel/F5
 end;
@@ -489,6 +502,74 @@ begin
   end;
 end;
 
+const
+  StartupRunKey = 'Software\Microsoft\Windows\CurrentVersion\Run';
+  StartupValueName = 'OnTopManager';
+
+procedure TfrmMain.LoadStartupOption;
+var
+  Reg: TRegistry;
+begin
+  FUpdatingStartup := True;
+  try
+    Reg := TRegistry.Create(KEY_QUERY_VALUE);
+    try
+      Reg.RootKey := HKEY_CURRENT_USER;
+      chkStartWithWindows.Checked := False;
+      if Reg.OpenKeyReadOnly(StartupRunKey) then
+        if Reg.ValueExists(StartupValueName) then
+          chkStartWithWindows.Checked :=
+            SameText(Trim(Reg.ReadString(StartupValueName)), '"' + ParamStr(0) + '"');
+    finally
+      Reg.Free;
+    end;
+  finally
+    FUpdatingStartup := False;
+  end;
+end;
+
+procedure TfrmMain.chkStartWithWindowsClick(Sender: TObject);
+var
+  Reg: TRegistry;
+begin
+  if FUpdatingStartup then
+    Exit;
+  try
+    Reg := TRegistry.Create(KEY_QUERY_VALUE or KEY_SET_VALUE);
+    try
+      Reg.RootKey := HKEY_CURRENT_USER;
+      if chkStartWithWindows.Checked then
+      begin
+        if not Reg.OpenKey(StartupRunKey, True) then
+          raise Exception.Create('Windows baslangic ayari acilamadi.');
+        // Quote the executable path so folders containing spaces work.
+        Reg.WriteString(StartupValueName, '"' + ParamStr(0) + '"');
+      end
+      else if Reg.OpenKey(StartupRunKey, False) then
+      begin
+        if Reg.ValueExists(StartupValueName) then
+          if not Reg.DeleteValue(StartupValueName) then
+            raise Exception.Create('Windows baslangic kaydi silinemedi.');
+      end
+      else
+        raise Exception.Create('Windows baslangic ayari acilamadi.');
+    finally
+      Reg.Free;
+    end;
+  except
+    on E: Exception do
+    begin
+      // Revert the toggle without triggering another registry update.
+      FUpdatingStartup := True;
+      try
+        chkStartWithWindows.Checked := not chkStartWithWindows.Checked;
+      finally
+        FUpdatingStartup := False;
+      end;
+      ShowMessage('Windows baslangic ayari kaydedilemedi: ' + E.Message);
+    end;
+  end;
+end;
 procedure TfrmMain.cboTrayPopupChange(Sender: TObject);
 begin
   SaveSettings;
