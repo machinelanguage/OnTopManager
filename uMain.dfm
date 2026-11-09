@@ -2,8 +2,8 @@ object frmMain: TfrmMain
   Left = 0
   Top = 0
   Caption = 'OnTop Manager'
-  ClientHeight = 420
-  ClientWidth = 660
+  ClientHeight = 471
+  ClientWidth = 921
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -20,29 +20,38 @@ object frmMain: TfrmMain
   object lblInfo: TLabel
     Left = 0
     Top = 82
-    Width = 660
-    Height = 20
+    Width = 921
+    Height = 15
     Align = alTop
     Alignment = taCenter
     Caption = 
-      'Birden fazla pencereyi (Ctrl/Ctrl+A) secip "Secilenleri Ontop Yap / Kaldir"' +
-      ' butonuna basin. Pencereyi one getirmek icin satira cift tiklayin.'
-    ExplicitWidth = 540
+      'Birden fazla pencereyi (Ctrl/Ctrl+A) secip "Secilenleri Ontop Ya' +
+      'p / Kaldir" butonuna basin. Pencereyi one getirmek icin satira c' +
+      'ift tiklayin.'
+    ExplicitWidth = 714
   end
   object PanelHK: TPanel
     Left = 0
     Top = 48
-    Width = 660
+    Width = 921
     Height = 34
     Align = alTop
     BevelOuter = bvNone
-    TabOrder = 3
+    TabOrder = 2
+    ExplicitWidth = 660
     object lblHK1: TLabel
       Left = 8
       Top = 10
-      Width = 55
+      Width = 48
       Height = 15
       Caption = 'Tray'#39'a At:'
+    end
+    object lblHK2: TLabel
+      Left = 214
+      Top = 10
+      Width = 52
+      Height = 15
+      Caption = 'Geri Getir:'
     end
     object hkSend: THotKey
       Left = 74
@@ -50,15 +59,9 @@ object frmMain: TfrmMain
       Width = 130
       Height = 20
       HotKey = 24648
-      OnChange = HKChange
+      Modifiers = [hkShift, hkCtrl]
       TabOrder = 0
-    end
-    object lblHK2: TLabel
-      Left = 214
-      Top = 10
-      Width = 56
-      Height = 15
-      Caption = 'Geri Getir:'
+      OnChange = HKChange
     end
     object hkRestore: THotKey
       Left = 278
@@ -66,8 +69,9 @@ object frmMain: TfrmMain
       Width = 130
       Height = 20
       HotKey = 24650
-      OnChange = HKChange
+      Modifiers = [hkShift, hkCtrl]
       TabOrder = 1
+      OnChange = HKChange
     end
     object btnApplyHK: TButton
       Left = 416
@@ -90,12 +94,27 @@ object frmMain: TfrmMain
   end
   object PanelHKEnabled: TPanel
     Left = 0
-    Top = 82
-    Width = 660
+    Top = 97
+    Width = 921
     Height = 52
     Align = alTop
     BevelOuter = bvNone
     TabOrder = 4
+    ExplicitWidth = 660
+    object lblTrayPopup: TLabel
+      Left = 250
+      Top = 6
+      Width = 70
+      Height = 15
+      Caption = 'Tray menusu:'
+    end
+    object lblOpenPID: TLabel
+      Left = 315
+      Top = 32
+      Width = 21
+      Height = 15
+      Caption = 'PID:'
+    end
     object chkHKEnabled: TCheckBox
       Left = 8
       Top = 5
@@ -106,13 +125,6 @@ object frmMain: TfrmMain
       State = cbChecked
       TabOrder = 0
       OnClick = chkHKEnabledClick
-    end
-    object lblTrayPopup: TLabel
-      Left = 250
-      Top = 6
-      Width = 117
-      Height = 15
-      Caption = 'Tray menusu:'
     end
     object cboTrayPopup: TComboBox
       Left = 380
@@ -137,13 +149,6 @@ object frmMain: TfrmMain
       TabOrder = 2
       OnClick = chkStartWithWindowsClick
     end
-    object lblOpenPID: TLabel
-      Left = 315
-      Top = 32
-      Width = 25
-      Height = 15
-      Caption = 'PID:'
-    end
     object edtOpenPID: TEdit
       Left = 345
       Top = 27
@@ -165,9 +170,9 @@ object frmMain: TfrmMain
   end
   object ListViewApps: TListView
     Left = 0
-    Top = 68
-    Width = 660
-    Height = 330
+    Top = 149
+    Width = 921
+    Height = 300
     Align = alClient
     Columns = <>
     GridLines = True
@@ -179,15 +184,18 @@ object frmMain: TfrmMain
     OnColumnClick = ListViewAppsColumnClick
     OnDblClick = ListViewAppsDblClick
     OnKeyDown = ListViewAppsKeyDown
+    ExplicitWidth = 660
+    ExplicitHeight = 249
   end
   object PanelTop: TPanel
     Left = 0
     Top = 0
-    Width = 660
+    Width = 921
     Height = 48
     Align = alTop
     BevelOuter = bvNone
     TabOrder = 1
+    ExplicitWidth = 660
     object btnRefresh: TButton
       Left = 8
       Top = 8
@@ -220,11 +228,13 @@ object frmMain: TfrmMain
   end
   object StatusBar1: TStatusBar
     Left = 0
-    Top = 398
-    Width = 660
+    Top = 449
+    Width = 921
     Height = 22
     Panels = <>
     SimplePanel = True
+    ExplicitTop = 398
+    ExplicitWidth = 660
   end
   object TimerRefresh: TTimer
     Enabled = False
@@ -241,7 +251,6 @@ object frmMain: TfrmMain
     Top = 16
   end
   object TrayIcon2: TTrayIcon
-    Visible = False
     OnClick = TrayIcon2Click
     Left = 448
     Top = 16
