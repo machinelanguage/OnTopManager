@@ -49,6 +49,9 @@ type
     cboTrayPopup: TComboBox;
     chkHKEnabled: TCheckBox;
     chkStartWithWindows: TCheckBox;
+    lblOpenPID: TLabel;
+    edtOpenPID: TEdit;
+    btnOpenPID: TButton;
     ListViewApps: TListView;
     TimerRefresh: TTimer;
     StatusBar1: TStatusBar;
@@ -72,6 +75,7 @@ type
       Shift: TShiftState; X, Y: Integer);
     procedure cboTrayPopupChange(Sender: TObject);
     procedure chkStartWithWindowsClick(Sender: TObject);
+    procedure btnOpenPIDClick(Sender: TObject);
     procedure ListViewAppsColumnClick(Sender: TObject; Column: TListColumn);
     procedure chkGroupClick(Sender: TObject);
     procedure ListViewAppsClick(Sender: TObject);
@@ -420,7 +424,7 @@ begin
   if GetAppVersion <> '' then
     Caption := Format('OnTop Manager v%s', [GetAppVersion])
   else
-    Caption := 'OnTop Manager v1.12.1';
+    Caption := 'OnTop Manager v1.13.0';
 
   TimerRefresh.Enabled := False; // liste otomatik yenilenmesin, sadece manuel/F5
 end;
@@ -1159,6 +1163,91 @@ begin
     end;
   end;
   FHidden.Clear;
+end;
+
+type
+  PEnumPIDContext = ^TEnumPIDContext;
+  TEnumPIDContext = record
+    PID: DWORD;
+    Windows: TList<HWND>;
+    Hidden: TList<HWND>;
+  end;
+
+function EnumPIDWindows(Wnd: HWND; LParam: LPARAM): BOOL; stdcall;
+var
+  Ctx: PEnumPIDContext;
+  PID: DWORD;
+begin
+  Result := True;
+  Ctx := PEnumPIDContext(Pointer(LParam));
+  GetWindowThreadProcessId(Wnd, PID);
+  if PID <> Ctx^.PID then
+    Exit;
+  if Ctx^.Hidden.Contains(Wnd) or
+    (IsWindowVisible(Wnd) and (GetWindowTextLength(Wnd) > 0) and
+     ((GetWindowLong(Wnd, GWL_EXSTYLE) and WS_EX_TOOLWINDOW) = 0)) then
+    Ctx^.Windows.Add(Wnd);
+end;
+
+procedure TfrmMain.btnOpenPIDClick(Sender: TObject);
+var
+  PIDValue: Int64;
+  Ctx: TEnumPIDContext;
+  I, Choice, HiddenIndex: Integer;
+  H: HWND;
+  ActualPID: DWORD;
+  Prompt, Selection: string;
+begin
+  if not TryStrToInt64(Trim(edtOpenPID.Text), PIDValue) or
+    (PIDValue <= 0) or (PIDValue > High(DWORD)) then
+  begin
+    ShowMessage('Gecerli bir PID girin (1 - 4294967295).');
+    edtOpenPID.SetFocus;
+    Exit;
+  end;
+  Ctx.PID := DWORD(PIDValue);
+  Ctx.Hidden := FHidden;
+  Ctx.Windows := TList<HWND>.Create;
+  try
+    EnumWindows(@EnumPIDWindows, LPARAM(@Ctx));
+    if Ctx.Windows.Count = 0 then
+    begin
+      ShowMessage('Bu PID icin acilabilecek bir pencere bulunamadi.');
+      Exit;
+    end;
+    Choice := 1;
+    if Ctx.Windows.Count > 1 then
+    begin
+      Prompt := 'Acilacak pencerenin numarasini girin:';
+      for I := 0 to Ctx.Windows.Count - 1 do
+        Prompt := Prompt + sLineBreak + IntToStr(I + 1) + '. ' +
+          GetWindowTitleText(Ctx.Windows[I]);
+      Selection := '1';
+      if not InputQuery('PID ' + IntToStr(PIDValue), Prompt, Selection) then
+        Exit;
+      if not TryStrToInt(Trim(Selection), Choice) or
+        (Choice < 1) or (Choice > Ctx.Windows.Count) then
+      begin
+        ShowMessage('Listeden gecerli bir pencere numarasi girin.');
+        Exit;
+      end;
+    end;
+    H := Ctx.Windows[Choice - 1];
+    ActualPID := 0;
+    GetWindowThreadProcessId(H, ActualPID);
+    if not IsWindow(H) or (ActualPID <> Ctx.PID) then
+    begin
+      ShowMessage('Secilen pencere artik mevcut degil.');
+      Exit;
+    end;
+    HiddenIndex := FHidden.IndexOf(H);
+    if HiddenIndex >= 0 then
+      RestoreHiddenIndex(HiddenIndex)
+    else
+      BringWindowToFront(H);
+  finally
+    Ctx.Windows.Free;
+  end;
 end;
 
 procedure TfrmMain.RestoreLastHidden;

@@ -44,12 +44,19 @@ Nasil calisir:
     siralama yapabilirsiniz; aktif siralama sutununda ^ / v isareti gorunur.
   - Sistem tepsisindeki simge uygulamanin kendi (Application) ikonudur.
 
+PID ile pencere acma:
+  - PID alanina calisan uygulamanin PID degerini yazip Pencereyi Ac'a basin.
+  - Tray'e gizlenen pencere geri getirilir; simge durumundaki pencere acilir.
+  - Ayni PID'de birden fazla pencere varsa baslik listesinden numarasini secin.
+  - Penceresi olmayan surecler icin bilgi mesaji gosterilir.
+
 Surum Notlari
 =============
 Surum numarasi Delphi proje seceneklerinde (OnTopManager.dproj > VerInfo_Keys,
 FileVersion/ProductVersion) tutulur ve form basliginda "vX.Y.Z" olarak gosterilir.
 Her yeni ozellik talebinde minor deger bir arttirilir.
 
+  v1.13.0 - PID girerek ilgili pencereyi one getirme ve gizli pencereyi geri getirme eklendi; birden fazla pencere icin secim sunulur.
   v1.12.1 - Program acilista ana pencereyi gostermeden dogrudan tray alanina yerlesir. Tray menusundeki Goster ile ana pencere acilir.
   v1.12.0 - Windows basladiginda calistir secenegi eklendi. Mevcut kullanicinin Run kaydina tirnakli EXE yolu yazilir; secim kaldirilinca yalnizca OnTopManager kaydi silinir. Varsayilan kapalidir.
   v1.11.1 - Kayitli tercih yoksa tray popup menusu varsayilan olarak sol tikla acilir.

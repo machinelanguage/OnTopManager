@@ -1,3 +1,11 @@
+v1.13.0 PID checks (manual, not executed here):
+Enter visible and minimized app PIDs; verify the selected window comes forward.
+Hide an app with the tray shortcut, enter its PID, verify restore and tray removal.
+Check empty, zero, overflowing, nonexistent and windowless process PIDs.
+Check a process with multiple windows: choose a title, cancel, invalid selection.
+Close a window while the selection is open: verify the stale target is rejected.
+Delphi compiler unavailable on PATH; build and runtime remain unverified.
+
 v1.8.0 verification
 ===================
 Source checks: git diff --check; project XML parsed; DFM/resource references present.

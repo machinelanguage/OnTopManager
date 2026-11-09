@@ -137,6 +137,31 @@ object frmMain: TfrmMain
       TabOrder = 2
       OnClick = chkStartWithWindowsClick
     end
+    object lblOpenPID: TLabel
+      Left = 315
+      Top = 32
+      Width = 25
+      Height = 15
+      Caption = 'PID:'
+    end
+    object edtOpenPID: TEdit
+      Left = 345
+      Top = 27
+      Width = 115
+      Height = 23
+      MaxLength = 10
+      NumbersOnly = True
+      TabOrder = 3
+    end
+    object btnOpenPID: TButton
+      Left = 468
+      Top = 27
+      Width = 130
+      Height = 23
+      Caption = 'Pencereyi Ac'
+      TabOrder = 4
+      OnClick = btnOpenPIDClick
+    end
   end
   object ListViewApps: TListView
     Left = 0
