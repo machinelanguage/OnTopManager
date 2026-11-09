@@ -59,6 +59,7 @@ type
     edtCPUDuration: TEdit;
     btnCPUApply: TButton;
     TimerCPU: TTimer;
+    TimerRemembered: TTimer;
     ListViewApps: TListView;
     TimerRefresh: TTimer;
     StatusBar1: TStatusBar;
@@ -85,6 +86,7 @@ type
     procedure btnOpenPIDClick(Sender: TObject);
     procedure btnCPUApplyClick(Sender: TObject);
     procedure TimerCPUTimer(Sender: TObject);
+    procedure TimerRememberedTimer(Sender: TObject);
     procedure ListViewAppsColumnClick(Sender: TObject; Column: TListColumn);
     procedure chkGroupClick(Sender: TObject);
     procedure ListViewAppsClick(Sender: TObject);
@@ -111,6 +113,7 @@ type
     FCPUEnabled: Boolean;
     FCPUThreshold, FCPUDuration: Integer;
     FHandlingCPU: Boolean;
+    FLoadingSettings, FSettingsLoaded: Boolean;
     FSortColumn: Integer;
     FSortAscending: Boolean;
     procedure WMSysCommand(var Msg: TWMSysCommand); message WM_SYSCOMMAND;
@@ -122,6 +125,8 @@ type
     procedure ApplyTopMost(AHandle: HWND; ATopMost: Boolean);
     procedure RefreshListView;
     procedure AutoApplyRemembered;
+    procedure CaptureTopMostPreferences;
+    procedure EnsureRememberedWindows;
     procedure UpdateStatusBar;
     procedure SortWindowList(AGrouped: Boolean);
     function CompareWindowInfos(const A, B: TWindowInfo): Integer;
@@ -437,20 +442,23 @@ begin
   // kisayol ilk "Uygula"ya dek oluyordu. Bu yuzden acilista acikca kaydediyoruz.)
   ApplyHotkeySettings;
   UpdateTrayState;
+  EnsureRememberedWindows;
   RefreshListView;
 
   // Surum bilgisini form basliginda goster (dproj'taki version kaynagindan okunur)
   if GetAppVersion <> '' then
     Caption := Format('OnTop Manager v%s', [GetAppVersion])
   else
-    Caption := 'OnTop Manager v1.14.1';
+    Caption := 'OnTop Manager v1.15.0';
 
   TimerRefresh.Enabled := False; // liste otomatik yenilenmesin, sadece manuel/F5
   StartCPUWatch;
+  TimerRemembered.Enabled := True;
 end;
 
 procedure TfrmMain.FormDestroy(Sender: TObject);
 begin
+  TimerRemembered.Enabled := False;
   TimerCPU.Enabled := False;
   FreeAndNil(FCPUWatch);
   UnregisterHotKey(Handle, 1);
@@ -466,7 +474,12 @@ end;
 procedure TfrmMain.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
   if FClosing then
-    Action := caFree
+  begin
+    CaptureTopMostPreferences;
+    SaveSettings;
+    RestoreAllHidden;
+    Action := caFree;
+  end
   else
   begin
     // Kapat (X) butonuna basinca sistem tepsisine kucult, uygulama acik kalsin
@@ -503,6 +516,7 @@ end;
 
 procedure TfrmMain.miShowClick(Sender: TObject);
 begin
+  RefreshListView;
   Show;
   WindowState := wsNormal;
   Application.BringToFront;
@@ -604,10 +618,12 @@ end;
 procedure TfrmMain.miExitClick(Sender: TObject);
 begin
   FClosing := True;
-  RestoreAllHidden;
-  TrayIcon2.Visible := False;
-  TrayIcon1.Visible := False;
-  Close;
+  try
+    Close;
+  except
+    FClosing := False;
+    raise;
+  end;
 end;
 
 { ---------------------------------------------------------------------------
@@ -620,6 +636,8 @@ var
   Keys: TStringList;
   I: Integer;
 begin
+  FLoadingSettings := True;
+  FSettingsLoaded := False;
   FRemembered.Clear;
   Ini := TIniFile.Create(FIniPath);
   Keys := TStringList.Create;
@@ -642,7 +660,9 @@ begin
     hkSend.HotKey := NormalizeHotKeyValue(Ini.ReadInteger('Hotkeys', 'SendHotKey', 24648));
     hkRestore.HotKey := NormalizeHotKeyValue(Ini.ReadInteger('Hotkeys', 'RestoreHotKey', 24650));
     chkOwnIcon.Checked := Ini.ReadBool('Options', 'OwnTrayIcon', False);
+    FSettingsLoaded := True;
   finally
+    FLoadingSettings := False;
     Keys.Free;
     Ini.Free;
   end;
@@ -653,6 +673,9 @@ var
   Ini: TIniFile;
   I: Integer;
 begin
+  // Loading UI values may fire OnChange/OnClick. Never overwrite the saved list then.
+  if FLoadingSettings or not FSettingsLoaded then
+    Exit;
   Ini := TIniFile.Create(FIniPath);
   try
     Ini.EraseSection('OnTop');
@@ -713,7 +736,7 @@ begin
     if (not Info.IsTopMost) and (FRemembered.IndexOf(LowerCase(Info.ExeName)) >= 0) then
     begin
       ApplyTopMost(Info.Handle, True);
-      Info.IsTopMost := True;
+      Info.IsTopMost := (GetWindowLong(Info.Handle, GWL_EXSTYLE) and WS_EX_TOPMOST) <> 0;
       FWindows[I] := Info;
     end;
   end;
@@ -1218,6 +1241,86 @@ begin
     (IsWindowVisible(Wnd) and (GetWindowTextLength(Wnd) > 0) and
      ((GetWindowLong(Wnd, GWL_EXSTYLE) and WS_EX_TOOLWINDOW) = 0)) then
     Ctx^.Windows.Add(Wnd);
+end;
+
+type
+  PRememberedContext = ^TRememberedContext;
+  TRememberedContext = record
+    Preferences: TStringList;
+    Hidden: TList<HWND>;
+    Capture: Boolean;
+  end;
+
+function EnumRememberedWindows(Wnd: HWND; LParam: LPARAM): BOOL; stdcall;
+var
+  Ctx: PRememberedContext;
+  PID: DWORD;
+  ExStyle: NativeInt;
+  ExeName: string;
+begin
+  Result := True;
+  Ctx := PRememberedContext(Pointer(LParam));
+  if (Wnd = GetDesktopWindow) or (Wnd = ShellWindowHandle) then
+    Exit;
+  if not IsWindowVisible(Wnd) and not Ctx^.Hidden.Contains(Wnd) then
+    Exit;
+  if GetWindowTextLength(Wnd) = 0 then
+    Exit;
+  ExStyle := GetWindowLong(Wnd, GWL_EXSTYLE);
+  if (ExStyle and WS_EX_TOOLWINDOW) <> 0 then
+    Exit;
+  if Ctx^.Capture then
+  begin
+    if (ExStyle and WS_EX_TOPMOST) = 0 then
+      Exit;
+  end
+  else if (ExStyle and WS_EX_TOPMOST) <> 0 then
+    Exit;
+  PID := 0;
+  if GetWindowThreadProcessId(Wnd, PID) = 0 then
+    Exit;
+  if PID = GetCurrentProcessId then
+    Exit;
+  ExeName := LowerCase(GetExeNameFromPID(PID));
+  if ExeName = '' then
+    Exit;
+  if Ctx^.Capture then
+    Ctx^.Preferences.Add(ExeName)
+  else if Ctx^.Preferences.IndexOf(ExeName) >= 0 then
+    // Do not activate/move/resize the window or wait on a hung application's UI.
+    SetWindowPos(Wnd, HWND_TOPMOST, 0, 0, 0, 0,
+      SWP_NOMOVE or SWP_NOSIZE or SWP_NOACTIVATE or SWP_ASYNCWINDOWPOS);
+end;
+
+procedure TfrmMain.CaptureTopMostPreferences;
+var
+  Ctx: TRememberedContext;
+begin
+  if not FSettingsLoaded then
+    Exit;
+  Ctx.Preferences := FRemembered;
+  Ctx.Hidden := FHidden;
+  Ctx.Capture := True;
+  EnumWindows(@EnumRememberedWindows, LPARAM(@Ctx));
+  // Keep remembered applications which currently have no windows, too.
+end;
+
+procedure TfrmMain.EnsureRememberedWindows;
+var
+  Ctx: TRememberedContext;
+begin
+  if not FSettingsLoaded or (FRemembered.Count = 0) then
+    Exit;
+  Ctx.Preferences := FRemembered;
+  Ctx.Hidden := FHidden;
+  Ctx.Capture := False;
+  EnumWindows(@EnumRememberedWindows, LPARAM(@Ctx));
+end;
+
+procedure TfrmMain.TimerRememberedTimer(Sender: TObject);
+begin
+  if not FClosing then
+    EnsureRememberedWindows;
 end;
 
 function TfrmMain.RevealCPUProcess(const Alert: TCPUAlert): Integer;

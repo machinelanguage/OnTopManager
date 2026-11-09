@@ -1,3 +1,16 @@
+v1.15.0 remembered topmost state:
+Source checker and diff checks only; Delphi compilation and Windows UI unverified.
+Manual: mark an app topmost, Exit OnTop, restart app/OnTop with new PID and verify
+topmost restoration without pressing Refresh. Repeat with app launched after OnTop
+and CPU monitoring disabled (independent 2-second timer). Keep another app focused;
+automatic restoration must not steal focus, move, resize, or unhide the target.
+Hide a topmost app in OnTop tray before Exit; verify it reappears and its preference
+survives restart. Exit with another externally-topmost app: verify it is remembered.
+Turn topmost off for all windows of one app; Exit/restart: it must stay off.
+Check INI OnTop entries survive loading nondefault hotkey/tray options. Closed apps'
+preferences must be retained. Windows rejecting SetWindowPos must not be shown as
+successfully topmost in the refreshed list.
+
 v1.14.1 thread lifecycle:
 Removed manual Start calls and the duplicate FStarted field. Create(False) starts
 only after construction; inherited TThread.Destroy joins before owned objects free.

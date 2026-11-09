@@ -68,12 +68,24 @@ CPU izleme:
     Erisim izni olmayan sistem/korumali prosesler ve OnTop'un kendisi izlenmez.
   - Uyari penceresi acikken arka plan olcumu devam eder.
 
+Ontop durumunu geri yukleme:
+  - Secilen ontop uygulamalari aninda settings.ini dosyasina kaydedilir.
+  - Normal Cikis sirasinda acik/tray'e gizlenmis ontop pencerelerin EXE adlari
+    da hatirlanir. O anda kapali olan uygulamalarin eski tercihleri korunur.
+  - Program yeniden acilinca calisan eslesen pencereler ontop yapilir.
+    Sonradan acilan pencereler 2 saniyelik arka plan kontrolunde uygulanir;
+    Listeyi Yenile'ye basmak gerekmez. Bu islem pencereyi odaga getirmez.
+  - Eslesme PID/handle yerine EXE adi uzerindendir; PID degisse de calisir.
+    Ayni EXE'nin tum uygun pencerelerine uygulanir. Bu tercihi kaldirmak icin
+    uygulamanin ontop pencerelerini secip Ontop Yap / Kaldir ile kapatin.
+
 Surum Notlari
 =============
 Surum numarasi Delphi proje seceneklerinde (OnTopManager.dproj > VerInfo_Keys,
 FileVersion/ProductVersion) tutulur ve form basliginda "vX.Y.Z" olarak gosterilir.
 Her yeni ozellik talebinde minor deger bir arttirilir.
 
+  v1.15.0 - Cikista ontop uygulamalari hatirlanir; acilista ve sonradan acilan pencerelerde otomatik geri uygulanir. Ayar yukleme sirasinda kayitlarin uzerine yazilmasi engellendi.
   v1.14.1 - CPU thread elle Start ile baslatilmaz; otomatik AfterConstruction akisi kullanilir. Kapatma sirasinda tekrar Start cagrisi kaldirildi; worker kaynaklari thread sonlandiktan sonra serbest birakilir.
   v1.14.0 - Surekli yuksek CPU izleme, ayarlanabilir esik/sure, ekranda PID/CPU uyarisi ve otomatik pencere geri getirme eklendi.
   v1.13.0 - PID girerek ilgili pencereyi one getirme ve gizli pencereyi geri getirme eklendi; birden fazla pencere icin secim sunulur.

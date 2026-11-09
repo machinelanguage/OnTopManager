@@ -303,6 +303,13 @@ object frmMain: TfrmMain
     Left = 480
     Top = 16
   end
+  object TimerRemembered: TTimer
+    Enabled = False
+    Interval = 2000
+    OnTimer = TimerRememberedTimer
+    Left = 640
+    Top = 16
+  end
   object TrayIcon1: TTrayIcon
     Visible = True
     OnDblClick = TrayIcon1DblClick
