@@ -31,7 +31,6 @@ type
     FDurationMS: UInt64;
     FProcessorCount: DWORD;
     FCycle: UInt64;
-    FStarted: Boolean;
     procedure Sample;
     procedure SampleProcess(PID: DWORD; const ExeName: string);
   protected
@@ -104,7 +103,8 @@ end;
 
 constructor TCPUWatchThread.Create(AThreshold: Double; ADurationSeconds: Integer);
 begin
-  inherited Create(True);
+  // Delphi starts Execute from AfterConstruction, after all fields are ready.
+  inherited Create(False);
   FreeOnTerminate := False;
   FStop := TEvent.Create(nil, True, False, '');
   FLock := TCriticalSection.Create;
@@ -115,8 +115,6 @@ begin
   FProcessorCount := AllProcessorCount($FFFF);
   if FProcessorCount = 0 then
     FProcessorCount := 1;
-  Start;
-  FStarted := True;
 end;
 
 destructor TCPUWatchThread.Destroy;
@@ -124,15 +122,13 @@ begin
   Terminate;
   if FStop <> nil then
     FStop.SetEvent;
-  if not FStarted then
-    Start; // Also permits cleanup after a constructor failure while suspended.
-  // This worker never Synchronize/Queues into the UI, so waiting cannot deadlock it.
-  WaitFor;
+  // TThread.Destroy terminates/joins the worker and handles partial construction.
+  // Keep all worker-owned objects alive until that join has completed.
+  inherited Destroy;
   FAlerts.Free;
   FStates.Free;
   FLock.Free;
   FStop.Free;
-  inherited;
 end;
 
 procedure TCPUWatchThread.DrainAlerts(AList: TList<TCPUAlert>);

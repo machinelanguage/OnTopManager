@@ -1,3 +1,10 @@
+v1.14.1 thread lifecycle:
+Removed manual Start calls and the duplicate FStarted field. Create(False) starts
+only after construction; inherited TThread.Destroy joins before owned objects free.
+Run tests/CPUThreadLifetimeTests.dpr for immediate/repeated/active-thread cleanup.
+Manual: open the app, repeatedly Apply CPU settings, disable/enable, then Exit.
+Source checks only here; Delphi compilation and lifecycle test execution unverified.
+
 v1.14.0 CPU monitoring:
 Structural checker: node tests/check-sources.cjs (not a Delphi compilation).
 PASS on 2026-11-09: form events, form resources, project units, literal limits.

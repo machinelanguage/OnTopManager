@@ -74,6 +74,7 @@ Surum numarasi Delphi proje seceneklerinde (OnTopManager.dproj > VerInfo_Keys,
 FileVersion/ProductVersion) tutulur ve form basliginda "vX.Y.Z" olarak gosterilir.
 Her yeni ozellik talebinde minor deger bir arttirilir.
 
+  v1.14.1 - CPU thread elle Start ile baslatilmaz; otomatik AfterConstruction akisi kullanilir. Kapatma sirasinda tekrar Start cagrisi kaldirildi; worker kaynaklari thread sonlandiktan sonra serbest birakilir.
   v1.14.0 - Surekli yuksek CPU izleme, ayarlanabilir esik/sure, ekranda PID/CPU uyarisi ve otomatik pencere geri getirme eklendi.
   v1.13.0 - PID girerek ilgili pencereyi one getirme ve gizli pencereyi geri getirme eklendi; birden fazla pencere icin secim sunulur.
   v1.12.1 - Program acilista ana pencereyi gostermeden dogrudan tray alanina yerlesir. Tray menusundeki Goster ile ana pencere acilir.
