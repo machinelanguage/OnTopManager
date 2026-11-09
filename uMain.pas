@@ -20,7 +20,7 @@ uses
   System.Generics.Collections, System.Generics.Defaults, System.DateUtils,
   System.Math, System.Win.Registry,
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ComCtrls,
-  Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.Menus, Vcl.ImgList;
+  Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.Menus, Vcl.ImgList, uCPUWatch, uCPUAlert;
 
 type
   TWindowInfo = record
@@ -52,6 +52,13 @@ type
     lblOpenPID: TLabel;
     edtOpenPID: TEdit;
     btnOpenPID: TButton;
+    chkCPUWatch: TCheckBox;
+    lblCPUThreshold: TLabel;
+    edtCPUThreshold: TEdit;
+    lblCPUDuration: TLabel;
+    edtCPUDuration: TEdit;
+    btnCPUApply: TButton;
+    TimerCPU: TTimer;
     ListViewApps: TListView;
     TimerRefresh: TTimer;
     StatusBar1: TStatusBar;
@@ -76,6 +83,8 @@ type
     procedure cboTrayPopupChange(Sender: TObject);
     procedure chkStartWithWindowsClick(Sender: TObject);
     procedure btnOpenPIDClick(Sender: TObject);
+    procedure btnCPUApplyClick(Sender: TObject);
+    procedure TimerCPUTimer(Sender: TObject);
     procedure ListViewAppsColumnClick(Sender: TObject; Column: TListColumn);
     procedure chkGroupClick(Sender: TObject);
     procedure ListViewAppsClick(Sender: TObject);
@@ -97,6 +106,11 @@ type
     FIniPath: string;
     FClosing: Boolean;
     FUpdatingStartup: Boolean;
+    FCPUWatch: TCPUWatchThread;
+    FCPUAlert: TfrmCPUAlert;
+    FCPUEnabled: Boolean;
+    FCPUThreshold, FCPUDuration: Integer;
+    FHandlingCPU: Boolean;
     FSortColumn: Integer;
     FSortAscending: Boolean;
     procedure WMSysCommand(var Msg: TWMSysCommand); message WM_SYSCOMMAND;
@@ -125,6 +139,8 @@ type
     procedure RebuildHiddenMenu;
     procedure UpdateHotkeyUI;
     procedure LoadStartupOption;
+    procedure StartCPUWatch;
+    function RevealCPUProcess(const Alert: TCPUAlert): Integer;
   public
   end;
 
@@ -374,6 +390,9 @@ begin
   FHiddenImages.Height := GetSystemMetrics(SM_CYSMICON);
   PopupMenuTray.Images := FHiddenImages;
   FClosing := False;
+  FCPUEnabled := True;
+  FCPUThreshold := 5;
+  FCPUDuration := 30;
 
   AppDataDir := IncludeTrailingPathDelimiter(GetEnvironmentVariable('APPDATA')) + 'OnTopManager';
   ForceDirectories(AppDataDir);
@@ -424,13 +443,16 @@ begin
   if GetAppVersion <> '' then
     Caption := Format('OnTop Manager v%s', [GetAppVersion])
   else
-    Caption := 'OnTop Manager v1.13.0';
+    Caption := 'OnTop Manager v1.14.0';
 
   TimerRefresh.Enabled := False; // liste otomatik yenilenmesin, sadece manuel/F5
+  StartCPUWatch;
 end;
 
 procedure TfrmMain.FormDestroy(Sender: TObject);
 begin
+  TimerCPU.Enabled := False;
+  FreeAndNil(FCPUWatch);
   UnregisterHotKey(Handle, 1);
   UnregisterHotKey(Handle, 2);
   RestoreAllHidden;
@@ -603,6 +625,12 @@ begin
   Keys := TStringList.Create;
   try
     cboTrayPopup.ItemIndex := EnsureRange(Ini.ReadInteger('Options', 'TrayPopupMouse', 1), 0, 1);
+    FCPUEnabled := Ini.ReadBool('CPUWatch', 'Enabled', True);
+    FCPUThreshold := EnsureRange(Ini.ReadInteger('CPUWatch', 'Threshold', 5), 1, 100);
+    FCPUDuration := EnsureRange(Ini.ReadInteger('CPUWatch', 'DurationSeconds', 30), 5, 3600);
+    chkCPUWatch.Checked := FCPUEnabled;
+    edtCPUThreshold.Text := IntToStr(FCPUThreshold);
+    edtCPUDuration.Text := IntToStr(FCPUDuration);
     Ini.ReadSection('OnTop', Keys);
     for I := 0 to Keys.Count - 1 do
       if Ini.ReadBool('OnTop', Keys[I], False) then
@@ -637,6 +665,9 @@ begin
     Ini.WriteBool('Options', 'OwnTrayIcon', chkOwnIcon.Checked);
     Ini.DeleteKey('Options', 'TrayOpenMouse');
     Ini.WriteInteger('Options', 'TrayPopupMouse', cboTrayPopup.ItemIndex);
+    Ini.WriteBool('CPUWatch', 'Enabled', FCPUEnabled);
+    Ini.WriteInteger('CPUWatch', 'Threshold', FCPUThreshold);
+    Ini.WriteInteger('CPUWatch', 'DurationSeconds', FCPUDuration);
   finally
     Ini.Free;
   end;
@@ -1187,6 +1218,125 @@ begin
     (IsWindowVisible(Wnd) and (GetWindowTextLength(Wnd) > 0) and
      ((GetWindowLong(Wnd, GWL_EXSTYLE) and WS_EX_TOOLWINDOW) = 0)) then
     Ctx^.Windows.Add(Wnd);
+end;
+
+function TfrmMain.RevealCPUProcess(const Alert: TCPUAlert): Integer;
+var
+  Ctx: TEnumPIDContext;
+  H, Proc: THandle;
+  I, HiddenIndex: Integer;
+  ActualPID: DWORD;
+  Shown: BOOL;
+  Created, Exited, Kernel, UserTime: TFileTime;
+begin
+  Result := 0;
+  Proc := OpenProcess($1000, False, Alert.PID);
+  if Proc = 0 then
+    Exit;
+  try
+    if not GetProcessTimes(Proc, Created, Exited, Kernel, UserTime) then
+      Exit;
+    if CPUFileTimeValue(Created) <> Alert.CreatedAt then
+      Exit; // Never reveal a different process which has reused this PID.
+    Ctx.PID := Alert.PID;
+    Ctx.Hidden := FHidden;
+    Ctx.Windows := TList<HWND>.Create;
+    try
+      EnumWindows(@EnumPIDWindows, LPARAM(@Ctx));
+      for I := 0 to Ctx.Windows.Count - 1 do
+      begin
+        H := Ctx.Windows[I];
+        ActualPID := 0;
+        GetWindowThreadProcessId(H, ActualPID);
+        if (ActualPID <> Alert.PID) or not IsWindow(H) then
+          Continue;
+        if IsIconic(H) then
+          Shown := ShowWindowAsync(H, SW_RESTORE)
+        else
+          Shown := ShowWindowAsync(H, SW_SHOW);
+        if not Shown then
+          Continue;
+        HiddenIndex := FHidden.IndexOf(H);
+        if HiddenIndex >= 0 then
+          FHidden.Delete(HiddenIndex);
+        if not SetForegroundWindow(H) then
+          FlashWindow(H, True);
+        Inc(Result);
+      end;
+      UpdateTrayState;
+    finally
+      Ctx.Windows.Free;
+    end;
+  finally
+    CloseHandle(Proc);
+  end;
+end;
+
+procedure TfrmMain.StartCPUWatch;
+begin
+  TimerCPU.Enabled := False;
+  FreeAndNil(FCPUWatch);
+  if FCPUEnabled and not FClosing then
+  begin
+    FCPUWatch := TCPUWatchThread.Create(FCPUThreshold, FCPUDuration);
+    TimerCPU.Enabled := True;
+  end;
+end;
+
+procedure TfrmMain.btnCPUApplyClick(Sender: TObject);
+var
+  Threshold, Duration: Integer;
+begin
+  if not TryStrToInt(Trim(edtCPUThreshold.Text), Threshold) or
+    (Threshold < 1) or (Threshold > 100) then
+  begin
+    ShowMessage('CPU esigi 1 ile 100 arasinda olmali.');
+    Exit;
+  end;
+  if not TryStrToInt(Trim(edtCPUDuration.Text), Duration) or
+    (Duration < 5) or (Duration > 3600) then
+  begin
+    ShowMessage('CPU izleme suresi 5 ile 3600 saniye arasinda olmali.');
+    Exit;
+  end;
+  FCPUEnabled := chkCPUWatch.Checked;
+  FCPUThreshold := Threshold;
+  FCPUDuration := Duration;
+  StartCPUWatch;
+  SaveSettings;
+  StatusBar1.SimpleText := 'CPU izleme ayarlari uygulandi.';
+end;
+
+procedure TfrmMain.TimerCPUTimer(Sender: TObject);
+var
+  Alerts: TList<TCPUAlert>;
+  Alert: TCPUAlert;
+  Text: string;
+  Count: Integer;
+begin
+  if FClosing or FHandlingCPU or (FCPUWatch = nil) then
+    Exit;
+  FHandlingCPU := True;
+  Alerts := TList<TCPUAlert>.Create;
+  try
+    FCPUWatch.DrainAlerts(Alerts);
+    for Alert in Alerts do
+    begin
+      Count := RevealCPUProcess(Alert);
+      Text := Format('%s | PID: %d | CPU: %s%% | Ortalama: %s%% | Sure: %s sn',
+        [Alert.ExeName, Alert.PID, FormatFloat('0.0', Alert.CPUPercent),
+         FormatFloat('0.0', Alert.AveragePercent),
+         FormatFloat('0.0', Alert.DurationMS / 1000.0)]);
+      if Count = 0 then
+        Text := Text + sLineBreak + 'Gosterilebilecek pencere yok veya proses kapandi.';
+      if FCPUAlert = nil then
+        FCPUAlert := TfrmCPUAlert.Create(Self);
+      FCPUAlert.AddAlert(Text);
+    end;
+  finally
+    Alerts.Free;
+    FHandlingCPU := False;
+  end;
 end;
 
 procedure TfrmMain.btnOpenPIDClick(Sender: TObject);

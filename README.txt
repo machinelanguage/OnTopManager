@@ -50,12 +50,31 @@ PID ile pencere acma:
   - Ayni PID'de birden fazla pencere varsa baslik listesinden numarasini secin.
   - Penceresi olmayan surecler icin bilgi mesaji gosterilir.
 
+CPU izleme:
+  - CPU izle kutusu, Esik (%) ve Sure (sn) alanlari ile ayarlanir.
+    CPU Ayarlarini Uygula ile devreye alinir ve INI dosyasina kaydedilir.
+  - Varsayilan: acik, esik %5, sure 30 saniye (20 saniye de secilebilir).
+  - Yaklasik her saniye tum erisilebilir proseslerin CPU zamani orneklenir.
+    CPU yuzdesi tum mantiksal islemcilerin toplam kapasitesine gore hesaplanir.
+  - Her ornek esik degerine esit veya ustunde olmali; tek dusuk ornek sureyi
+    sifirlar. Kisa spike'lar uyari uretmez. 3 saniyeden uzun ornekleme boslugu
+    veya uyku sonrasi kesintisiz yuksek kullanim varsayilmaz, yeni olcum baslar.
+  - Kesintisiz yuksek donemde bir kez uyari verilir; esik altina dustukten sonra
+    yeni bir tam sureli yuksek donem tekrar uyari uretebilir.
+  - Uyari: EXE adi, PID, son CPU yuzdesi, donem ortalamasi ve sure.
+    Prosesin acik veya OnTop tarafindan gizlenmis pencereleri gorunur yapilir.
+    Windows odak gecisini engellerse gorev cubugu simgesi yanip soner.
+  - Penceresi olmayan veya kapanan proses icin bu durum mesajda belirtilir.
+    Erisim izni olmayan sistem/korumali prosesler ve OnTop'un kendisi izlenmez.
+  - Uyari penceresi acikken arka plan olcumu devam eder.
+
 Surum Notlari
 =============
 Surum numarasi Delphi proje seceneklerinde (OnTopManager.dproj > VerInfo_Keys,
 FileVersion/ProductVersion) tutulur ve form basliginda "vX.Y.Z" olarak gosterilir.
 Her yeni ozellik talebinde minor deger bir arttirilir.
 
+  v1.14.0 - Surekli yuksek CPU izleme, ayarlanabilir esik/sure, ekranda PID/CPU uyarisi ve otomatik pencere geri getirme eklendi.
   v1.13.0 - PID girerek ilgili pencereyi one getirme ve gizli pencereyi geri getirme eklendi; birden fazla pencere icin secim sunulur.
   v1.12.1 - Program acilista ana pencereyi gostermeden dogrudan tray alanina yerlesir. Tray menusundeki Goster ile ana pencere acilir.
   v1.12.0 - Windows basladiginda calistir secenegi eklendi. Mevcut kullanicinin Run kaydina tirnakli EXE yolu yazilir; secim kaldirilinca yalnizca OnTopManager kaydi silinir. Varsayilan kapalidir.

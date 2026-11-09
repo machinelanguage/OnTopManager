@@ -4,7 +4,9 @@ uses
   Winapi.Windows,
   Winapi.Messages,
   Vcl.Forms,
-  uMain in 'uMain.pas' {frmMain};
+  uMain in 'uMain.pas' {frmMain},
+  uCPUWatch in 'uCPUWatch.pas',
+  uCPUAlert in 'uCPUAlert.pas' {frmCPUAlert};
 
 {$R *.res}
 

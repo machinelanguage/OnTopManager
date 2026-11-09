@@ -96,7 +96,7 @@ object frmMain: TfrmMain
     Left = 0
     Top = 97
     Width = 921
-    Height = 52
+    Height = 84
     Align = alTop
     BevelOuter = bvNone
     TabOrder = 4
@@ -167,12 +167,65 @@ object frmMain: TfrmMain
       TabOrder = 4
       OnClick = btnOpenPIDClick
     end
+    object chkCPUWatch: TCheckBox
+      Left = 8
+      Top = 60
+      Width = 120
+      Height = 17
+      Caption = 'CPU izle'
+      Checked = True
+      State = cbChecked
+      TabOrder = 5
+    end
+    object lblCPUThreshold: TLabel
+      Left = 140
+      Top = 60
+      Width = 50
+      Height = 15
+      Caption = 'Esik (%):'
+    end
+    object edtCPUThreshold: TEdit
+      Left = 195
+      Top = 56
+      Width = 55
+      Height = 23
+      MaxLength = 3
+      NumbersOnly = True
+      Text = '5'
+      TabOrder = 6
+    end
+    object lblCPUDuration: TLabel
+      Left = 270
+      Top = 60
+      Width = 60
+      Height = 15
+      Caption = 'Sure (sn):'
+    end
+    object edtCPUDuration: TEdit
+      Left = 335
+      Top = 56
+      Width = 65
+      Height = 23
+      MaxLength = 4
+      NumbersOnly = True
+      Text = '30'
+      TabOrder = 7
+    end
+    object btnCPUApply: TButton
+      Left = 420
+      Top = 55
+      Width = 178
+      Height = 25
+      Caption = 'CPU Ayarlarini Uygula'
+      TabOrder = 8
+      OnClick = btnCPUApplyClick
+    end
   end
   object ListViewApps: TListView
     Left = 0
-    Top = 149
+    Top = 181
     Width = 921
-    Height = 300
+    Height = 268
     Align = alClient
     Columns = <>
     GridLines = True
@@ -241,6 +294,13 @@ object frmMain: TfrmMain
     Interval = 2000
     OnTimer = TimerRefreshTimer
     Left = 592
+    Top = 16
+  end
+  object TimerCPU: TTimer
+    Enabled = False
+    Interval = 1000
+    OnTimer = TimerCPUTimer
+    Left = 480
     Top = 16
   end
   object TrayIcon1: TTrayIcon

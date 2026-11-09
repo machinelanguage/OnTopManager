@@ -1,3 +1,25 @@
+v1.14.0 CPU monitoring:
+Structural checker: node tests/check-sources.cjs (not a Delphi compilation).
+PASS on 2026-11-09: form events, form resources, project units, literal limits.
+Regression scenarios: tests/CPUWatchTests.dpr calls the production state function.
+Compile from tests in a Delphi command prompt: dcc32 -B CPUWatchTests.dpr
+Then execute CPUWatchTests.exe. No Delphi compiler is available in this environment;
+these Pascal scenarios and the Windows integration tests have NOT been run here.
+Scenarios cover sustained 5% boundary, 20/30 seconds, short spikes, no repeat alerts,
+rearming, processor normalization, sampling gaps, PID reuse and counter rollback.
+Manual Windows checks:
+- Configure 20 seconds/5%, Apply; keep a test process above 5% machine CPU for
+  25 seconds: one warning with matching PID/current/average CPU, visible window.
+- Run brief 1-3 second spikes separated by idle: no warning.
+- Hide/minimize the test app first: warning restores it from the tray/minimized state.
+- Leave it continuously busy: no repeated warning; idle then busy a full period:
+  a fresh warning. Verify warning window does not stop measurement.
+- Stop/restart the process, sleep/resume, disable/apply, change/apply settings,
+  restart OnTop and verify preserved settings with fresh measurement history.
+- Check a background process with no window: useful warning, no unrelated window.
+- Confirm responsiveness and clean exit with monitoring enabled and no process
+  handles left open; observe inaccessible processes are skipped.
+
 v1.13.0 PID checks (manual, not executed here):
 Enter visible and minimized app PIDs; verify the selected window comes forward.
 Hide an app with the tray shortcut, enter its PID, verify restore and tray removal.
